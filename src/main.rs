@@ -52,11 +52,7 @@ struct MenuItem {
 
 impl MenuItem {
     fn is_inside(&self, x: f32, y: f32) -> bool {
-        if x >= self.x && x < self.x + self.w && y >= self.y && y < self.y + self.h {
-            true
-        } else {
-            false
-        }
+        x >= self.x && x < self.x + self.w && y >= self.y && y < self.y + self.h
     }
 }
 
@@ -386,6 +382,55 @@ struct Particle {
     life_timer: f64,
 }
 
+struct ParticleSystem {
+    particles: Vec<Particle>,
+    spawn_timer: f64,
+    spawn_time: f64,
+    lifetime: f64,
+    host_rect: Rectangle,
+    direction: Vector,
+}
+
+impl ParticleSystem {
+    fn new(spawn_time: f64, lifetime: f64, host_rect: Rectangle, direction: Vector) -> Self {
+        Self {
+            particles: Vec::new(),
+            spawn_timer: 0.0,
+            spawn_time,
+            lifetime,
+            host_rect,
+            direction,
+        }
+    }
+
+    fn update(&mut self, dt: f64) {
+        for i in (0..self.particles.len()).rev() {
+            self.particles[i].life_timer += dt;
+            if self.particles[i].life_timer > self.particles[i].lifetime {
+                self.particles.swap_remove(i);
+            } else {
+                self.particles[i].rect.pos.x += self.particles[i].velx * dt as f32;
+                self.particles[i].rect.pos.y += self.particles[i].vely * dt as f32;
+                self.particles[i].r += self.particles[i].velr * dt as f32;
+            }
+        }
+
+        self.spawn_timer += dt;
+        if self.spawn_timer > self.spawn_time {
+            self.spawn_timer -= self.spawn_time;
+            self.particles.push(Particle {
+                rect: self.host_rect,
+                velx: rand::thread_rng().gen_range(-0.2, 0.2) + self.direction.x,
+                vely: rand::thread_rng().gen_range(-0.2, 0.2) + self.direction.y,
+                velr: rand::thread_rng().gen_range(-0.5, 0.5),
+                r: rand::thread_rng().gen_range(0.0, 90.0),
+                lifetime: self.lifetime,
+                life_timer: 0.0,
+            });
+        }
+    }
+}
+
 struct GameState {
     s_boom: Asset<Sound>,
     s_get: Asset<Sound>,
@@ -405,9 +450,8 @@ struct GameState {
     current_finished: bool,
     player: Rectangle,
     player_r: f64,
-    player_particles: Vec<Particle>,
+    player_particles: ParticleSystem,
     player_opacity: f32,
-    pp_timer: f64,
 }
 
 impl State for GameState {
@@ -431,9 +475,13 @@ impl State for GameState {
             current_finished: true,
             player: Rectangle::new((400.0, 300.0), (32.0, 32.0)),
             player_r: 0.0,
-            player_particles: Vec::new(),
+            player_particles: ParticleSystem::new(
+                PP_GEN_RATE,
+                1000.0,
+                Rectangle::new((400.0, 300.0), (32.0, 32.0)),
+                Vector::new(0.0, 0.0),
+            ),
             player_opacity: 0.0,
-            pp_timer: 0.0,
         })
     }
 
@@ -689,30 +737,8 @@ impl State for GameState {
             }
         }
 
-        for i in (0..self.player_particles.len()).rev() {
-            self.player_particles[i].life_timer += dt;
-            if self.player_particles[i].life_timer >= self.player_particles[i].lifetime {
-                self.player_particles.swap_remove(i);
-            } else {
-                self.player_particles[i].rect.pos.x += self.player_particles[i].velx * dt as f32;
-                self.player_particles[i].rect.pos.y += self.player_particles[i].vely * dt as f32;
-                self.player_particles[i].r += self.player_particles[i].velr * dt as f32;
-            }
-        }
-
-        self.pp_timer += dt;
-        if self.pp_timer > PP_GEN_RATE {
-            self.pp_timer -= PP_GEN_RATE;
-            self.player_particles.push(Particle {
-                rect: self.player.clone(),
-                velx: rand::thread_rng().gen_range(-0.2, 0.2),
-                vely: rand::thread_rng().gen_range(-0.2, 0.2),
-                velr: rand::thread_rng().gen_range(-0.5, 0.5),
-                r: rand::thread_rng().gen_range(0.0, 90.0),
-                lifetime: 1000.0,
-                life_timer: 0.0,
-            });
-        }
+        self.player_particles.host_rect = self.player;
+        self.player_particles.update(dt);
 
         Ok(())
     }
@@ -763,7 +789,7 @@ impl State for GameState {
                 MenuItemType::Pause { timer, length } => (),
             }
         }
-        for particle in &self.player_particles {
+        for particle in &self.player_particles.particles {
             window.draw_ex(
                 &particle.rect,
                 Col(Color::from_rgba(
