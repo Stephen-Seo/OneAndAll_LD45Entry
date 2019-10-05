@@ -1,5 +1,5 @@
 use quicksilver::{
-    geom::{Circle, Rectangle, Vector},
+    geom::{Circle, Rectangle, Transform, Vector},
     graphics::{
         Background::{Col, Img},
         Color, Font, FontStyle, Image,
@@ -15,6 +15,7 @@ const WIDTH_F: f32 = 800.0;
 const HEIGHT_F: f32 = 600.0;
 const MUSIC2_LENGTH: f64 = 2.0 * 60.0 * 1000.0;
 const TEXT_RATE: f64 = 100.0;
+const PP_GEN_RATE: f64 = 75.0;
 
 enum MenuItemType {
     Button {
@@ -375,6 +376,16 @@ impl Menu {
     }
 }
 
+struct Particle {
+    rect: Rectangle,
+    velx: f32,
+    vely: f32,
+    velr: f32,
+    r: f32,
+    lifetime: f64,
+    life_timer: f64,
+}
+
 struct GameState {
     s_boom: Asset<Sound>,
     s_get: Asset<Sound>,
@@ -392,6 +403,11 @@ struct GameState {
     selection_mode: bool,
     current_item: Option<usize>,
     current_finished: bool,
+    player: Rectangle,
+    player_r: f64,
+    player_particles: Vec<Particle>,
+    player_opacity: f32,
+    pp_timer: f64,
 }
 
 impl State for GameState {
@@ -413,6 +429,11 @@ impl State for GameState {
             selection_mode: true,
             current_item: None,
             current_finished: true,
+            player: Rectangle::new((400.0, 300.0), (32.0, 32.0)),
+            player_r: 0.0,
+            player_particles: Vec::new(),
+            player_opacity: 0.0,
+            pp_timer: 0.0,
         })
     }
 
@@ -525,6 +546,8 @@ impl State for GameState {
     fn update(&mut self, window: &mut Window) -> Result<()> {
         let dt = window.update_rate();
 
+        self.player_r += dt / 10.0;
+
         if self.state_dirty {
             self.state_dirty = false;
             if self.state > 1 && !self.music_on {
@@ -575,7 +598,15 @@ impl State for GameState {
                     self.current_item = None;
                     self.selection_mode = true;
                     self.state = 0;
+                    self.player_opacity = 0.0;
                 }
+            }
+        }
+
+        if self.player_opacity < 1.0 && self.state > 1 {
+            self.player_opacity += dt as f32 / 7000.0;
+            if self.player_opacity > 1.0 {
+                self.player_opacity = 1.0;
             }
         }
 
@@ -657,6 +688,32 @@ impl State for GameState {
                 }
             }
         }
+
+        for i in (0..self.player_particles.len()).rev() {
+            self.player_particles[i].life_timer += dt;
+            if self.player_particles[i].life_timer >= self.player_particles[i].lifetime {
+                self.player_particles.swap_remove(i);
+            } else {
+                self.player_particles[i].rect.pos.x += self.player_particles[i].velx * dt as f32;
+                self.player_particles[i].rect.pos.y += self.player_particles[i].vely * dt as f32;
+                self.player_particles[i].r += self.player_particles[i].velr * dt as f32;
+            }
+        }
+
+        self.pp_timer += dt;
+        if self.pp_timer > PP_GEN_RATE {
+            self.pp_timer -= PP_GEN_RATE;
+            self.player_particles.push(Particle {
+                rect: self.player.clone(),
+                velx: rand::thread_rng().gen_range(-0.2, 0.2),
+                vely: rand::thread_rng().gen_range(-0.2, 0.2),
+                velr: rand::thread_rng().gen_range(-0.5, 0.5),
+                r: rand::thread_rng().gen_range(0.0, 90.0),
+                lifetime: 1000.0,
+                life_timer: 0.0,
+            });
+        }
+
         Ok(())
     }
 
@@ -706,6 +763,27 @@ impl State for GameState {
                 MenuItemType::Pause { timer, length } => (),
             }
         }
+        for particle in &self.player_particles {
+            window.draw_ex(
+                &particle.rect,
+                Col(Color::from_rgba(
+                    0xFF,
+                    0xFF,
+                    0xFF,
+                    (1.0 - (particle.life_timer / particle.lifetime) as f32) * self.player_opacity,
+                )),
+                Transform::translate((-particle.rect.size.x / 2.0, -particle.rect.size.y / 2.0))
+                    * Transform::rotate(particle.r),
+                1,
+            );
+        }
+        window.draw_ex(
+            &self.player,
+            Col(Color::from_rgba(0xFF, 0xFF, 0xFF, self.player_opacity)),
+            Transform::translate((-self.player.size.x / 2.0, -self.player.size.y / 2.0))
+                * Transform::rotate(self.player_r as f32),
+            1,
+        );
         Ok(())
     }
 }
