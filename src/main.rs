@@ -64,6 +64,35 @@ struct Menu {
 }
 
 impl Menu {
+    fn button(
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        s: &'static str,
+        t_color: Color,
+        box_color: Color,
+        boxh_color: Color,
+        first: bool,
+    ) -> MenuItem {
+        MenuItem {
+            x,
+            y,
+            w,
+            h,
+            item_type: MenuItemType::Button {
+                text: s,
+                text_image: None,
+                text_c: t_color,
+                h_c: boxh_color,
+                c: box_color,
+            },
+            is_hover: false,
+            is_focus: false,
+            is_loaded: !first,
+        }
+    }
+
     fn start() -> Menu {
         let item = MenuItem {
             x: WIDTH_F / 2.0 - 120.0,
@@ -144,6 +173,206 @@ impl Menu {
             ],
         }
     }
+
+    fn s_02() -> Menu {
+        Menu {
+            items: vec![
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 150.0,
+                    40.0,
+                    true,
+                    "Just by being, you brought light into existence.",
+                ),
+                Menu::pause(500.0, false),
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 110.0,
+                    40.0,
+                    false,
+                    "What brings you here? What drives you?",
+                ),
+                Menu::pause(500.0, false),
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 70.0,
+                    40.0,
+                    false,
+                    "Please tell me, what fuels you?",
+                ),
+                Menu::button(
+                    100.0,
+                    30.0,
+                    200.0,
+                    85.0,
+                    "Hope",
+                    Color::WHITE,
+                    Color::BLACK,
+                    Color::from_rgba(0x33, 0x33, 0x33, 1.0),
+                    false,
+                ),
+                Menu::button(
+                    500.0,
+                    30.0,
+                    200.0,
+                    85.0,
+                    "Miracles",
+                    Color::WHITE,
+                    Color::BLACK,
+                    Color::from_rgba(0x33, 0x33, 0x33, 1.0),
+                    false,
+                ),
+                Menu::button(
+                    100.0,
+                    150.0,
+                    200.0,
+                    85.0,
+                    "Kindness",
+                    Color::WHITE,
+                    Color::BLACK,
+                    Color::from_rgba(0x33, 0x33, 0x33, 1.0),
+                    false,
+                ),
+                Menu::button(
+                    500.0,
+                    150.0,
+                    200.0,
+                    85.0,
+                    "Determination",
+                    Color::WHITE,
+                    Color::BLACK,
+                    Color::from_rgba(0x33, 0x33, 0x33, 1.0),
+                    false,
+                ),
+            ],
+        }
+    }
+
+    // choose hope
+    fn s_03() -> Menu {
+        Menu {
+            items: vec![
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 170.0,
+                    40.0,
+                    true,
+                    "Hope... hope that your actions will inspire others..",
+                ),
+                Menu::pause(500.0, false),
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 130.0,
+                    40.0,
+                    false,
+                    "Hope that a brighter future will come tomorrow...",
+                ),
+                Menu::pause(500.0, false),
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 90.0,
+                    40.0,
+                    false,
+                    ".. With your appearance, perhaps it shall...",
+                ),
+            ],
+        }
+    }
+
+    // choose miracles
+    fn s_04() -> Menu {
+        Menu {
+            items: vec![
+                Menu::text(
+                    30.0,
+                    HEIGHT_F - 170.0,
+                    40.0,
+                    true,
+                    "Miracles huh?.. I see, then your appearance is special.",
+                ),
+                Menu::pause(500.0, false),
+                Menu::text(
+                    30.0,
+                    HEIGHT_F - 130.0,
+                    40.0,
+                    false,
+                    "With your appearance, things may change for the better..",
+                ),
+                Menu::pause(500.0, false),
+                Menu::text(
+                    30.0,
+                    HEIGHT_F - 90.0,
+                    40.0,
+                    false,
+                    "Now I am certain that this meeting was not by chance.",
+                ),
+            ],
+        }
+    }
+
+    // choose kindness
+    fn s_05() -> Menu {
+        Menu {
+            items: vec![
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 170.0,
+                    40.0,
+                    true,
+                    "Kindness?.. I am in your debt.",
+                ),
+                Menu::pause(250.0, false),
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 130.0,
+                    40.0,
+                    false,
+                    "It has been a long time since I have encountered",
+                ),
+                Menu::text(50.0, HEIGHT_F - 90.0, 40.0, false, "another being..."),
+                Menu::pause(500.0, false),
+                Menu::text(270.0, HEIGHT_F - 90.0, 40.0, false, "... Thank you..."),
+            ],
+        }
+    }
+
+    // choose determination
+    fn s_06() -> Menu {
+        Menu {
+            items: vec![
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 170.0,
+                    40.0,
+                    true,
+                    "Determination.. I see...",
+                ),
+                Menu::pause(500.0, false),
+                Menu::text(
+                    400.0,
+                    HEIGHT_F - 170.0,
+                    40.0,
+                    false,
+                    "I do not doubt it, for it",
+                ),
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 130.0,
+                    40.0,
+                    false,
+                    "must have been difficult to come here..",
+                ),
+                Menu::pause(500.0, false),
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 90.0,
+                    40.0,
+                    false,
+                    "Your resolve is evident by your mere presence..",
+                ),
+            ],
+        }
+    }
 }
 
 struct GameState {
@@ -214,11 +443,37 @@ impl State for GameState {
                                         self.state += 1;
                                         self.state_dirty = true;
                                     }
-                                    _ => (),
+                                    2 => {
+                                        if idx == 5 {
+                                            // hope
+                                            self.state = 3;
+                                            self.state_dirty = true;
+                                        } else if idx == 6 {
+                                            // miracles
+                                            self.state = 4;
+                                            self.state_dirty = true;
+                                        } else if idx == 7 {
+                                            // kindness
+                                            self.state = 5;
+                                            self.state_dirty = true;
+                                        } else {
+                                            // determination
+                                            self.state = 6;
+                                            self.state_dirty = true;
+                                        }
+                                    }
+                                    _ => {
+                                        self.state = 0;
+                                        self.state_dirty = true;
+                                    }
                                 }
                             }
                         } else {
-                            self.state += 1;
+                            match self.state {
+                                0 | 1 => self.state += 1,
+                                3 | 4 | 5 | 6 => self.state = 7,
+                                _ => self.state = 0,
+                            }
                             self.state_dirty = true;
                         }
                     } else {
@@ -272,9 +527,46 @@ impl State for GameState {
 
         if self.state_dirty {
             self.state_dirty = false;
+            if self.state > 1 && !self.music_on {
+                let mut music_on = false;
+                self.music2.execute(|m2| {
+                    music_on = true;
+                    m2.set_volume(0.6);
+                    m2.play()
+                })?;
+                if music_on {
+                    self.music_on = true;
+                    self.music_timer = 0.0;
+                }
+            }
             match self.state {
                 1 => {
                     self.menu = Menu::s_01();
+                    self.current_finished = false;
+                    self.selection_mode = false;
+                }
+                2 => {
+                    self.menu = Menu::s_02();
+                    self.current_finished = false;
+                    self.selection_mode = true;
+                }
+                3 => {
+                    self.menu = Menu::s_03();
+                    self.current_finished = false;
+                    self.selection_mode = false;
+                }
+                4 => {
+                    self.menu = Menu::s_04();
+                    self.current_finished = false;
+                    self.selection_mode = false;
+                }
+                5 => {
+                    self.menu = Menu::s_05();
+                    self.current_finished = false;
+                    self.selection_mode = false;
+                }
+                6 => {
+                    self.menu = Menu::s_06();
                     self.current_finished = false;
                     self.selection_mode = false;
                 }
@@ -331,8 +623,8 @@ impl State for GameState {
                             let next = text.chars().nth(current_text.len());
                             if let Some(next_t) = next {
                                 current_text.push(next_t);
-                                self.s_speak_f.execute(|s| {
-                                    s.set_volume(0.3);
+                                self.s_tap.execute(|s| {
+                                    s.set_volume(0.2);
                                     s.play()
                                 })?;
                             } else {
