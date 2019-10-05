@@ -16,6 +16,12 @@ const HEIGHT_F: f32 = 600.0;
 const MUSIC2_LENGTH: f64 = 2.0 * 60.0 * 1000.0;
 const TEXT_RATE: f64 = 100.0;
 const PP_GEN_RATE: f64 = 75.0;
+const PARTICLE_RAND_VEL_RANGE: f32 = 0.2;
+const PARTICLE_RAND_VEL_DIST: f32 = 0.2828427; // dist where x and y = 0.2
+const PARTICLE_RAND_ROT_RANGE: f32 = 0.5;
+const JOINING_OPACITY_RATE: f32 = 0.00008;
+const JOINING_FAR_DIST: f32 = 700.0;
+const JOINING_NEAR_DIST: f32 = 150.0;
 
 enum MenuItemType {
     Button {
@@ -117,13 +123,7 @@ impl Menu {
         Menu {
             items: vec![
                 item,
-                Menu::instant_text(
-                    150.0,
-                    50.0,
-                    45.0,
-                    true,
-                    "One And All",
-                ),
+                Menu::instant_text(150.0, 50.0, 55.0, true, "One And All"),
                 Menu::instant_text(
                     25.0,
                     HEIGHT_F - 100.0,
@@ -445,10 +445,19 @@ struct ParticleSystem {
     lifetime: f64,
     host_rect: Rectangle,
     direction: Vector,
+    color: Color,
+    opacity: f32,
 }
 
 impl ParticleSystem {
-    fn new(spawn_time: f64, lifetime: f64, host_rect: Rectangle, direction: Vector) -> Self {
+    fn new(
+        spawn_time: f64,
+        lifetime: f64,
+        host_rect: Rectangle,
+        direction: Vector,
+        color: Color,
+        opacity: f32,
+    ) -> Self {
         Self {
             particles: Vec::new(),
             spawn_timer: 0.0,
@@ -456,6 +465,8 @@ impl ParticleSystem {
             lifetime,
             host_rect,
             direction,
+            color,
+            opacity,
         }
     }
 
@@ -476,14 +487,98 @@ impl ParticleSystem {
             self.spawn_timer -= self.spawn_time;
             self.particles.push(Particle {
                 rect: self.host_rect,
-                velx: rand::thread_rng().gen_range(-0.2, 0.2) + self.direction.x,
-                vely: rand::thread_rng().gen_range(-0.2, 0.2) + self.direction.y,
-                velr: rand::thread_rng().gen_range(-0.5, 0.5),
+                velx: rand::thread_rng()
+                    .gen_range(-PARTICLE_RAND_VEL_RANGE, PARTICLE_RAND_VEL_RANGE)
+                    + self.direction.x,
+                vely: rand::thread_rng()
+                    .gen_range(-PARTICLE_RAND_VEL_RANGE, PARTICLE_RAND_VEL_RANGE)
+                    + self.direction.y,
+                // velx: self.direction.x,
+                // vely: self.direction.y,
+                velr: rand::thread_rng()
+                    .gen_range(-PARTICLE_RAND_ROT_RANGE, PARTICLE_RAND_ROT_RANGE),
                 r: rand::thread_rng().gen_range(0.0, 90.0),
                 lifetime: self.lifetime,
                 life_timer: 0.0,
             });
         }
+    }
+
+    fn draw(&mut self, window: &mut Window, transform: Transform) {
+        if self.opacity == 0.0 {
+            return;
+        }
+        for particle in &mut self.particles {
+            self.color.a = (1.0 - (particle.life_timer / particle.lifetime) as f32) * self.opacity;
+            let pre_transform =
+                Transform::translate((-particle.rect.size.x / 2.0, -particle.rect.size.y / 2.0))
+                    * Transform::rotate(particle.r);
+            window.draw_ex(
+                &particle.rect,
+                Col(self.color),
+                transform * pre_transform,
+                1,
+            );
+        }
+    }
+}
+
+struct RotatingParticleSystem {
+    particle_system: ParticleSystem,
+    r: f32,
+    velr: f32,
+    offset: f32,
+}
+
+impl RotatingParticleSystem {
+    fn new(
+        spawn_time: f64,
+        lifetime: f64,
+        host_rect: Rectangle,
+        direction: Vector,
+        color: Color,
+        opacity: f32,
+        rotation: f32,
+        velr: f32,
+        offset: f32,
+    ) -> Self {
+        RotatingParticleSystem {
+            particle_system: ParticleSystem::new(
+                spawn_time, lifetime, host_rect, direction, color, opacity,
+            ),
+            r: rotation,
+            velr,
+            offset,
+        }
+    }
+
+    fn update(&mut self, dt: f64) {
+        let saved_rect = self.particle_system.host_rect;
+        self.particle_system.host_rect.pos +=
+            Transform::rotate(self.r) * Vector::new(self.offset, 0.0);
+        self.particle_system.update(dt);
+        self.particle_system.host_rect = saved_rect;
+        self.r += self.velr * dt as f32;
+    }
+
+    fn draw(&mut self, window: &mut Window, transform: Transform) {
+        if self.particle_system.opacity == 0.0 {
+            return;
+        }
+        self.particle_system.direction =
+            Transform::rotate(self.r) * Vector::new(0.0, -PARTICLE_RAND_VEL_DIST);
+        self.particle_system.draw(window, transform);
+        let mut moved_rect = self.particle_system.host_rect;
+        moved_rect.pos += Transform::rotate(self.r) * Vector::new(self.offset, 0.0);
+        let mut solid_color = self.particle_system.color;
+        solid_color.a = self.particle_system.opacity;
+        window.draw_ex(
+            &moved_rect,
+            Col(solid_color),
+            Transform::translate((-moved_rect.size.x / 2.0, -moved_rect.size.y / 2.0))
+                * Transform::rotate(self.r * 1.3),
+            1,
+        );
     }
 }
 
@@ -507,7 +602,7 @@ struct GameState {
     player: Rectangle,
     player_r: f64,
     player_particles: ParticleSystem,
-    player_opacity: f32,
+    joining_particles: RotatingParticleSystem,
 }
 
 impl State for GameState {
@@ -536,8 +631,20 @@ impl State for GameState {
                 1000.0,
                 Rectangle::new((400.0, 300.0), (32.0, 32.0)),
                 Vector::new(0.0, 0.0),
+                Color::WHITE,
+                0.0,
             ),
-            player_opacity: 0.0,
+            joining_particles: RotatingParticleSystem::new(
+                PP_GEN_RATE,
+                1000.0,
+                Rectangle::new((400.0, 300.0), (16.0, 16.0)),
+                Vector::new(0.0, 0.0),
+                Color::GREEN,
+                0.0,
+                0.0,
+                0.1,
+                JOINING_FAR_DIST,
+            ),
         })
     }
 
@@ -573,18 +680,26 @@ impl State for GameState {
                                             // hope
                                             self.state = 3;
                                             self.state_dirty = true;
+                                            self.joining_particles.particle_system.color =
+                                                Color::from_rgba(0xAA, 0xCC, 0xFF, 1.0);
                                         } else if idx == 6 {
                                             // miracles
                                             self.state = 4;
                                             self.state_dirty = true;
+                                            self.joining_particles.particle_system.color =
+                                                Color::from_rgba(0xFF, 0xFF, 0xAA, 1.0);
                                         } else if idx == 7 {
                                             // kindness
                                             self.state = 5;
                                             self.state_dirty = true;
+                                            self.joining_particles.particle_system.color =
+                                                Color::from_rgba(0xBB, 0xFF, 0xBB, 1.0);
                                         } else {
                                             // determination
                                             self.state = 6;
                                             self.state_dirty = true;
+                                            self.joining_particles.particle_system.color =
+                                                Color::from_rgba(0xFF, 0xAA, 0xAA, 1.0);
                                         }
                                     }
                                     _ => {
@@ -716,15 +831,26 @@ impl State for GameState {
                     self.current_item = None;
                     self.selection_mode = true;
                     self.state = 0;
-                    self.player_opacity = 0.0;
+                    self.player_particles.opacity = 0.0;
+                    self.joining_particles.particle_system.opacity = 0.0;
                 }
             }
         }
 
-        if self.player_opacity < 1.0 && self.state > 1 {
-            self.player_opacity += dt as f32 / 7000.0;
-            if self.player_opacity > 1.0 {
-                self.player_opacity = 1.0;
+        if self.joining_particles.particle_system.opacity < 1.0 && self.state > 2 {
+            self.joining_particles.particle_system.opacity += JOINING_OPACITY_RATE * dt as f32;
+            if self.joining_particles.particle_system.opacity > 1.0 {
+                self.joining_particles.particle_system.opacity = 1.0;
+            }
+            self.joining_particles.offset =
+                (1.0 - self.joining_particles.particle_system.opacity / 1.0) * JOINING_FAR_DIST
+                    + self.joining_particles.particle_system.opacity / 1.0 * JOINING_NEAR_DIST;
+        }
+
+        if self.player_particles.opacity < 1.0 && self.state > 1 {
+            self.player_particles.opacity += dt as f32 / 7000.0;
+            if self.player_particles.opacity > 1.0 {
+                self.player_particles.opacity = 1.0;
             }
         }
 
@@ -831,6 +957,7 @@ impl State for GameState {
 
         self.player_particles.host_rect = self.player;
         self.player_particles.update(dt);
+        self.joining_particles.update(dt);
 
         Ok(())
     }
@@ -894,27 +1021,20 @@ impl State for GameState {
                 MenuItemType::Pause { timer, length } => (),
             }
         }
-        for particle in &self.player_particles.particles {
-            window.draw_ex(
-                &particle.rect,
-                Col(Color::from_rgba(
-                    0xFF,
-                    0xFF,
-                    0xFF,
-                    (1.0 - (particle.life_timer / particle.lifetime) as f32) * self.player_opacity,
-                )),
-                Transform::translate((-particle.rect.size.x / 2.0, -particle.rect.size.y / 2.0))
-                    * Transform::rotate(particle.r),
-                1,
-            );
-        }
+        self.player_particles.draw(window, Transform::IDENTITY);
         window.draw_ex(
             &self.player,
-            Col(Color::from_rgba(0xFF, 0xFF, 0xFF, self.player_opacity)),
+            Col(Color::from_rgba(
+                0xFF,
+                0xFF,
+                0xFF,
+                self.player_particles.opacity,
+            )),
             Transform::translate((-self.player.size.x / 2.0, -self.player.size.y / 2.0))
                 * Transform::rotate(self.player_r as f32),
             1,
         );
+        self.joining_particles.draw(window, Transform::IDENTITY);
         Ok(())
     }
 }
