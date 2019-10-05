@@ -877,11 +877,13 @@ impl State for GameState {
                             *text_image = Some(font.render(text, &style)?);
                             Ok(())
                         })?;
-                        mi.is_loaded = true;
-                        if i + 1 < self.menu.items.len() {
-                            self.menu.items[i + 1].is_loaded = false;
-                        } else {
-                            self.current_finished = true;
+                        if text_image.is_some() {
+                            mi.is_loaded = true;
+                            if i + 1 < self.menu.items.len() {
+                                self.menu.items[i + 1].is_loaded = false;
+                            } else {
+                                self.current_finished = true;
+                            }
                         }
                     }
                     MenuItemType::AppearingText {
