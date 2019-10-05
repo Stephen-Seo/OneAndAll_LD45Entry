@@ -1,0 +1,11 @@
+[package]
+name = "ld45_start_with_nothing"
+version = "0.1.0"
+authors = ["Stephen Seo <seo.disparate@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+quicksilver = "0.3.19"
+rand = "0.7.2"
