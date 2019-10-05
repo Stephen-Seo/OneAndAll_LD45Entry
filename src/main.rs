@@ -33,6 +33,12 @@ enum MenuItemType {
         text_c: Color,
         timer: f64,
     },
+    InstantText {
+        text: &'static str,
+        text_image: Option<Image>,
+        text_size: f32,
+        text_color: Color,
+    },
     Pause {
         timer: f64,
         length: f64,
@@ -108,7 +114,57 @@ impl Menu {
             is_loaded: false,
         };
 
-        Menu { items: vec![item] }
+        Menu {
+            items: vec![
+                item,
+                Menu::instant_text(
+                    150.0,
+                    50.0,
+                    45.0,
+                    true,
+                    "One And All",
+                ),
+                Menu::instant_text(
+                    25.0,
+                    HEIGHT_F - 100.0,
+                    30.0,
+                    true,
+                    "Made with quicksilver which is licensed with either",
+                ),
+                Menu::instant_text(
+                    70.0,
+                    HEIGHT_F - 80.0,
+                    30.0,
+                    true,
+                    "MIT License or Apache License Version 2.0",
+                ),
+                Menu::instant_text(
+                    25.0,
+                    HEIGHT_F - 50.0,
+                    30.0,
+                    true,
+                    "Uses Clear-Sans which is licensed with Apache License Version 2.0",
+                ),
+            ],
+        }
+    }
+
+    fn instant_text(x: f32, y: f32, text_size: f32, first: bool, s: &'static str) -> MenuItem {
+        MenuItem {
+            x,
+            y,
+            w: 0.0,
+            h: 0.0,
+            item_type: MenuItemType::InstantText {
+                text: s,
+                text_image: None,
+                text_size,
+                text_color: Color::WHITE,
+            },
+            is_hover: false,
+            is_focus: false,
+            is_loaded: !first,
+        }
     }
 
     fn text(x: f32, y: f32, text_size: f32, first: bool, s: &'static str) -> MenuItem {
@@ -579,6 +635,20 @@ impl State for GameState {
                                     }
                                 }
                                 MenuItemType::Pause { timer, length } => (),
+                                MenuItemType::InstantText {
+                                    text,
+                                    text_image,
+                                    text_size,
+                                    text_color,
+                                } => {
+                                    if text_image.is_none() {
+                                        self.font.execute(|f| {
+                                            let style = FontStyle::new(*text_size, *text_color);
+                                            *text_image = Some(f.render(text, &style)?);
+                                            Ok(())
+                                        })?;
+                                    }
+                                }
                             }
                             mi.is_loaded = true;
                         }
@@ -733,6 +803,28 @@ impl State for GameState {
                             }
                         }
                     }
+                    MenuItemType::InstantText {
+                        text,
+                        text_image,
+                        text_size,
+                        text_color,
+                    } => {
+                        if text_image.is_none() {
+                            self.font.execute(|f| {
+                                let style = FontStyle::new(*text_size, *text_color);
+                                *text_image = Some(f.render(text, &style)?);
+                                Ok(())
+                            })?;
+                        }
+                        if text_image.is_some() {
+                            mi.is_loaded = true;
+                            if i + 1 < self.menu.items.len() {
+                                self.menu.items[i + 1].is_loaded = false;
+                            } else {
+                                self.current_finished = true;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -786,6 +878,19 @@ impl State for GameState {
                         window.draw(&image_rect, Img(i));
                     }
                 }
+                MenuItemType::InstantText {
+                    text,
+                    text_image,
+                    text_size,
+                    text_color,
+                } => {
+                    if let Some(i) = text_image {
+                        let mut image_rect = i.area();
+                        image_rect.pos.x = mi.x;
+                        image_rect.pos.y = mi.y;
+                        window.draw(&image_rect, Img(i));
+                    }
+                }
                 MenuItemType::Pause { timer, length } => (),
             }
         }
@@ -816,7 +921,7 @@ impl State for GameState {
 
 fn main() {
     run::<GameState>(
-        "LudumDare45_StartWithNothing",
+        "One And All - a Ludum Dare 45 compo entry",
         Vector::new(800, 600),
         Settings::default(),
     );

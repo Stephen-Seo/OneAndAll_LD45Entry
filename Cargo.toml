@@ -1,5 +1,5 @@
 [package]
-name = "ld45_start_with_nothing"
+name = "ld45_one_and_all"
 version = "0.1.0"
 authors = ["Stephen Seo <seo.disparate@gmail.com>"]
 edition = "2018"

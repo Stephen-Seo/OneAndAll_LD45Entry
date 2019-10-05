@@ -994,7 +994,7 @@ version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "ld45_start_with_nothing"
+name = "ld45_one_and_all"
 version = "0.1.0"
 dependencies = [
  "quicksilver 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
