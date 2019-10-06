@@ -19,7 +19,7 @@ const PP_GEN_RATE: f64 = 75.0;
 const PARTICLE_RAND_VEL_RANGE: f32 = 0.2;
 const PARTICLE_RAND_VEL_DIST: f32 = 0.2828427; // dist where x and y = 0.2
 const PARTICLE_RAND_ROT_RANGE: f32 = 0.5;
-const JOINING_OPACITY_RATE: f32 = 0.00008;
+const JOINING_OPACITY_RATE: f32 = 0.00013;
 const JOINING_FAR_DIST: f32 = 700.0;
 const JOINING_NEAR_DIST: f32 = 150.0;
 const DOUBLE_CLICK_TIME: f64 = 350.0;
@@ -455,14 +455,14 @@ impl Menu {
                     HEIGHT_F - 130.0,
                     40.0,
                     true,
-                    "Now that you are here, it must mean a new time of",
+                    "Now that you are here, it must mean a new era of",
                 ),
                 Menu::text(
                     50.0,
                     HEIGHT_F - 90.0,
                     40.0,
                     false,
-                    "creation for the world.",
+                    "creation for all that will be.",
                 ),
                 Menu::pause(200.0, false),
                 Menu::text(
