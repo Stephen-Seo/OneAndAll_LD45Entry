@@ -22,6 +22,26 @@ const PARTICLE_RAND_ROT_RANGE: f32 = 0.5;
 const JOINING_OPACITY_RATE: f32 = 0.00008;
 const JOINING_FAR_DIST: f32 = 700.0;
 const JOINING_NEAR_DIST: f32 = 150.0;
+const DOUBLE_CLICK_TIME: f64 = 350.0;
+
+fn interp_sq_inv(x: f32) -> f32 {
+    if x < 0.0 {
+        return 0.0
+    } else if x > 1.0 {
+        return 1.0
+    }
+    let y = x - 1.0;
+    -y * y + 1.0
+}
+
+fn interp_sq(x: f32) -> f32 {
+    if x < 0.0 {
+        return 0.0
+    } else if x > 1.0 {
+        return 1.0
+    }
+    x * x
+}
 
 enum MenuItemType {
     Button {
@@ -426,6 +446,59 @@ impl Menu {
             ],
         }
     }
+
+    fn s_07() -> Menu {
+        Menu {
+            items: vec![
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 130.0,
+                    40.0,
+                    true,
+                    "Now that you are here, it must mean a new time of",
+                ),
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 90.0,
+                    40.0,
+                    false,
+                    "creation for the world.",
+                ),
+                Menu::pause(200.0, false),
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 50.0,
+                    40.0,
+                    false,
+                    "Try double-clicking the void to create something...",
+                ),
+            ],
+        }
+    }
+
+    fn s_08() -> Menu {
+        Menu {
+            items: vec![
+                Menu::instant_text(
+                    50.0,
+                    HEIGHT_F - 90.0,
+                    35.0,
+                    true,
+                    "(Try double-clicking now...)",
+                ),
+            ],
+        }
+    }
+
+    fn s_09() -> Menu {
+        Menu {
+            items: vec![
+                Menu::pause(400.0, true),
+                Menu::text(50.0, HEIGHT_F - 140.0, 40.0, false,
+                    "A new planet... It has most certainly been a while."),
+            ]
+        }
+    }
 }
 
 struct Particle {
@@ -582,6 +655,100 @@ impl RotatingParticleSystem {
     }
 }
 
+struct ExplConvCircleParticle {
+    circle: Circle,
+    offset: f32,
+    r: f32,
+}
+
+struct ExplConvParticleSystem {
+    particles: Vec<ExplConvCircleParticle>,
+    lifetime: f64,
+    host_circle: Circle,
+    color: Color,
+    opacity: f32,
+    life_timer: f64,
+}
+
+impl ExplConvParticleSystem {
+    fn new(
+        lifetime: f64,
+        host_circle: Circle,
+        color: Color,
+        opacity: f32,
+    ) -> Self {
+        ExplConvParticleSystem {
+            particles: Vec::new(),
+            lifetime,
+            host_circle,
+            color,
+            opacity,
+            life_timer: 0.0,
+        }
+    }
+
+    fn activate(&mut self, count: usize, offset: f32) {
+        self.life_timer = 0.0;
+        for i in 0..count {
+            self.particles.push(ExplConvCircleParticle {
+                circle: self.host_circle,
+                offset,
+                r: rand::thread_rng().gen_range(0.0, 360.0),
+            });
+        }
+    }
+
+    // returns true if finished
+    fn update(&mut self, dt: f64, planets: &mut Vec<Planet>) -> bool {
+        self.life_timer += dt;
+        if self.life_timer >= self.lifetime {
+            if !self.particles.is_empty() {
+                self.particles.clear();
+                planets.push(Planet{ circle: self.host_circle, color: self.color, });
+                return true;
+            }
+            return false;
+        }
+
+        if self.life_timer < self.lifetime / 2.0 {
+            let amount = interp_sq_inv((self.life_timer / self.lifetime) as f32 * 2.0);
+            for particle in &mut self.particles {
+                let dir = Transform::rotate(particle.r) * Vector::new(
+                    particle.offset * amount, 0.0);
+                particle.circle.pos = dir + self.host_circle.pos;
+            }
+        } else {
+            let amount = 1.0 - interp_sq(((self.life_timer / self.lifetime) as f32 - 0.5) * 2.0);
+            for particle in &mut self.particles {
+                let dir = Transform::rotate(particle.r) * Vector::new(
+                    particle.offset * amount, 0.0);
+                particle.circle.pos = dir + self.host_circle.pos;
+            }
+        }
+        return false;
+    }
+
+    fn draw(&mut self, window: &mut Window, transform: Transform) {
+        if self.opacity == 0.0 {
+            return;
+        }
+        for particle in &mut self.particles {
+            self.color.a = ((self.life_timer / self.lifetime) as f32 / 2.0 + 0.5) * self.opacity;
+            window.draw_ex(
+                &particle.circle,
+                Col(self.color),
+                transform,
+                1,
+            );
+        }
+    }
+}
+
+struct Planet {
+    circle: Circle,
+    color: Color,
+}
+
 struct GameState {
     s_boom: Asset<Sound>,
     s_get: Asset<Sound>,
@@ -603,6 +770,11 @@ struct GameState {
     player_r: f64,
     player_particles: ParticleSystem,
     joining_particles: RotatingParticleSystem,
+    is_create_mode: bool,
+    click_release_time: f64,
+    mouse_pos: Vector,
+    expl_conv_p_systems: Vec<ExplConvParticleSystem>,
+    planets: Vec<Planet>,
 }
 
 impl State for GameState {
@@ -645,12 +817,18 @@ impl State for GameState {
                 0.1,
                 JOINING_FAR_DIST,
             ),
+            is_create_mode: false,
+            click_release_time: 0.0,
+            mouse_pos: Vector::new(0.0, 0.0),
+            expl_conv_p_systems: Vec::new(),
+            planets: Vec::new(),
         })
     }
 
     fn event(&mut self, event: &Event, window: &mut Window) -> Result<()> {
         match event {
             Event::MouseMoved(v) => {
+                self.mouse_pos = *v;
                 let mut hovered = false;
                 for i in 0..self.menu.items.len() {
                     if self.menu.items[i].is_inside(v.x, v.y) {
@@ -666,9 +844,25 @@ impl State for GameState {
                 }
             }
             Event::MouseButton(button, state) => {
-                if let ButtonState::Pressed = state {
+                if let ButtonState::Released = state {
+                    self.click_release_time = 0.0;
+                } else if let ButtonState::Pressed = state {
                     if self.current_finished {
-                        if self.selection_mode {
+                        if self.is_create_mode {
+                            if self.click_release_time < DOUBLE_CLICK_TIME {
+                                if self.state == 8 {
+                                    let mut expl_conv_system = ExplConvParticleSystem::new(
+                                        1500.0, Circle::new(self.mouse_pos, 20.0),
+                                        Color::GREEN, 1.0,
+                                    );
+                                    expl_conv_system.activate(30, 200.0);
+                                    self.expl_conv_p_systems.push(expl_conv_system);
+                                    self.state = 9;
+                                    self.state_dirty = true;
+                                }
+                            }
+                        }
+                        else if self.selection_mode {
                             if let Some(idx) = self.current_item {
                                 match self.state {
                                     0 => {
@@ -712,6 +906,7 @@ impl State for GameState {
                             match self.state {
                                 0 | 1 => self.state += 1,
                                 3 | 4 | 5 | 6 => self.state = 7,
+                                7 => self.state = 8,
                                 _ => self.state = 0,
                             }
                             self.state_dirty = true;
@@ -779,6 +974,7 @@ impl State for GameState {
     fn update(&mut self, window: &mut Window) -> Result<()> {
         let dt = window.update_rate();
 
+        self.click_release_time += dt;
         self.player_r += dt / 10.0;
 
         if self.state_dirty {
@@ -826,13 +1022,33 @@ impl State for GameState {
                     self.current_finished = false;
                     self.selection_mode = false;
                 }
+                7 => {
+                    self.menu = Menu::s_07();
+                    self.current_finished = false;
+                    self.selection_mode = false;
+                }
+                8 => {
+                    self.menu = Menu::s_08();
+                    self.current_finished = true;
+                    self.selection_mode = false;
+                    self.is_create_mode = true;
+                }
+                9 => {
+                    self.menu = Menu::s_09();
+                    self.current_finished = false;
+                    self.selection_mode = false;
+                    self.is_create_mode = false;
+                }
                 _ => {
                     self.menu = Menu::start();
                     self.current_item = None;
                     self.selection_mode = true;
+                    self.is_create_mode = false;
                     self.state = 0;
                     self.player_particles.opacity = 0.0;
                     self.joining_particles.particle_system.opacity = 0.0;
+                    self.expl_conv_p_systems.clear();
+                    self.planets.clear();
                 }
             }
         }
@@ -961,6 +1177,12 @@ impl State for GameState {
         self.player_particles.update(dt);
         self.joining_particles.update(dt);
 
+        for i in (0..self.expl_conv_p_systems.len()).rev() {
+            if self.expl_conv_p_systems[i].update(dt, &mut self.planets) {
+                self.expl_conv_p_systems.swap_remove(i);
+            }
+        }
+
         Ok(())
     }
 
@@ -1037,6 +1259,12 @@ impl State for GameState {
             1,
         );
         self.joining_particles.draw(window, Transform::IDENTITY);
+        for expl_conv_ps in &mut self.expl_conv_p_systems {
+            expl_conv_ps.draw(window, Transform::IDENTITY);
+        }
+        for planet in &mut self.planets {
+            window.draw(&planet.circle, Col(planet.color));
+        }
         Ok(())
     }
 }
