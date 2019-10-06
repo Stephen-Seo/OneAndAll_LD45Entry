@@ -499,6 +499,16 @@ impl Menu {
                     false,
                     "A new planet... It has most certainly been a while.",
                 ),
+                Menu::pause(500.0, false),
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 100.0,
+                    40.0,
+                    false,
+                    "Please, go out and create the new universe, and again..",
+                ),
+                Menu::pause(300.0, false),
+                Menu::text(50.0, HEIGHT_F - 60.0, 40.0, false, "Thank you."),
             ],
         }
     }
@@ -666,11 +676,19 @@ impl RotatingParticleSystem {
     }
 
     fn update(&mut self, dt: f64) {
-        let saved_rect = self.particle_system.host_rect;
-        self.particle_system.host_rect.pos +=
-            Transform::rotate(self.r) * Vector::new(self.offset, 0.0);
-        self.particle_system.update(dt);
-        self.particle_system.host_rect = saved_rect;
+        if self.particle_system.is_rect {
+            let saved_rect = self.particle_system.host_rect;
+            self.particle_system.host_rect.pos +=
+                Transform::rotate(self.r) * Vector::new(self.offset, 0.0);
+            self.particle_system.update(dt);
+            self.particle_system.host_rect = saved_rect;
+        } else {
+            let saved_cir = self.particle_system.host_circle;
+            self.particle_system.host_circle.pos +=
+                Transform::rotate(self.r) * Vector::new(self.offset, 0.0);
+            self.particle_system.update(dt);
+            self.particle_system.host_circle = saved_cir;
+        }
         self.r += self.velr * dt as f32;
     }
 
@@ -787,15 +805,18 @@ struct Planet {
     circle: Circle,
     color: Color,
     particle_system: ParticleSystem,
+    moons: Vec<RotatingParticleSystem>,
 }
 
 impl Planet {
     fn new(circle: Circle, color: Color) -> Self {
-        Planet {
+        let mut smaller_circle = circle;
+        smaller_circle.radius /= 4.0;
+        let mut planet = Planet {
             circle,
             color,
             particle_system: ParticleSystem::new(
-                3500.0,
+                rand::thread_rng().gen_range(2000.0, 3800.0),
                 900.0,
                 Rectangle::new((0.0, 0.0), (1.0, 1.0)),
                 circle,
@@ -805,16 +826,45 @@ impl Planet {
                 1.0,
                 0.3,
             ),
+            moons: Vec::new(),
+        };
+
+        let mut r: f32 = rand::thread_rng().gen_range(0.0, 360.0);
+        for i in 0..rand::thread_rng().gen_range(0, 5) {
+            planet.moons.push(RotatingParticleSystem::new(
+                rand::thread_rng().gen_range(1000.0, 2600.0),
+                600.0,
+                Rectangle::new((0.0, 0.0), (1.0, 1.0)),
+                smaller_circle,
+                false,
+                Vector::new(0.0, 0.0),
+                color,
+                1.0,
+                r,
+                rand::thread_rng().gen_range(0.05, 0.15),
+                rand::thread_rng().gen_range(35.0, 200.0),
+                0.2,
+            ));
         }
+
+        planet
     }
 
     fn update(&mut self, dt: f64) {
+        self.particle_system.host_circle.pos = self.circle.pos;
         self.particle_system.update(dt);
+        for moon in &mut self.moons {
+            moon.particle_system.host_circle.pos = self.circle.pos;
+            moon.update(dt);
+        }
     }
 
     fn draw(&mut self, window: &mut Window, transform: Transform) {
         self.particle_system.draw(window, transform);
         window.draw_ex(&self.circle, Col(self.color), transform, 1);
+        for moon in &mut self.moons {
+            moon.draw(window, transform);
+        }
     }
 }
 
