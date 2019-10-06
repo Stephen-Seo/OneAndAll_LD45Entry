@@ -26,6 +26,7 @@ const JOINING_FAR_DIST: f32 = 700.0;
 const JOINING_NEAR_DIST: f32 = 150.0;
 const DOUBLE_CLICK_TIME: f64 = 350.0;
 const SL_NOTIF_TIME: f64 = 5000.0;
+const MAX_MOONS: usize = 5;
 
 fn interp_sq_inv(x: f32) -> f32 {
     if x < 0.0 {
@@ -854,11 +855,11 @@ impl Planet {
                 1.0,
                 0.3,
             ),
-            moons: Vec::new(),
+            moons: Vec::with_capacity(MAX_MOONS),
         };
 
         let r: f32 = rand::thread_rng().gen_range(0.0, 360.0);
-        for i in 0..rand::thread_rng().gen_range(0, 5) {
+        for i in 0..rand::thread_rng().gen_range(0, MAX_MOONS) {
             planet.moons.push(RotatingParticleSystem::new(
                 rand::thread_rng().gen_range(1000.0, 2600.0),
                 600.0,
@@ -1043,6 +1044,10 @@ impl State for GameState {
                                     self.expl_conv_p_systems.push(expl_conv_system);
                                     self.state = 9;
                                     self.state_dirty = true;
+                                    self.s_boom.execute(|s| {
+                                        s.set_volume(0.8);
+                                        s.play()
+                                    })?;
                                 } else if self.state == 10 {
                                     let mut rng = rand::thread_rng();
                                     let mut expl_conv_system = ExplConvParticleSystem::new(
@@ -1061,6 +1066,10 @@ impl State for GameState {
                                         rng.gen_range(150.0, 300.0),
                                     );
                                     self.expl_conv_p_systems.push(expl_conv_system);
+                                    self.s_boom.execute(|s| {
+                                        s.set_volume(0.8);
+                                        s.play()
+                                    })?;
                                 }
                             } else {
                                 self.click_time = Some(0.0);
