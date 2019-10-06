@@ -26,9 +26,9 @@ const DOUBLE_CLICK_TIME: f64 = 350.0;
 
 fn interp_sq_inv(x: f32) -> f32 {
     if x < 0.0 {
-        return 0.0
+        return 0.0;
     } else if x > 1.0 {
-        return 1.0
+        return 1.0;
     }
     let y = x - 1.0;
     -y * y + 1.0
@@ -36,9 +36,9 @@ fn interp_sq_inv(x: f32) -> f32 {
 
 fn interp_sq(x: f32) -> f32 {
     if x < 0.0 {
-        return 0.0
+        return 0.0;
     } else if x > 1.0 {
-        return 1.0
+        return 1.0;
     }
     x * x
 }
@@ -478,15 +478,13 @@ impl Menu {
 
     fn s_08() -> Menu {
         Menu {
-            items: vec![
-                Menu::instant_text(
-                    50.0,
-                    HEIGHT_F - 90.0,
-                    35.0,
-                    true,
-                    "(Try double-clicking now...)",
-                ),
-            ],
+            items: vec![Menu::instant_text(
+                50.0,
+                HEIGHT_F - 90.0,
+                35.0,
+                true,
+                "(Try double-clicking now...)",
+            )],
         }
     }
 
@@ -494,15 +492,22 @@ impl Menu {
         Menu {
             items: vec![
                 Menu::pause(400.0, true),
-                Menu::text(50.0, HEIGHT_F - 140.0, 40.0, false,
-                    "A new planet... It has most certainly been a while."),
-            ]
+                Menu::text(
+                    50.0,
+                    HEIGHT_F - 140.0,
+                    40.0,
+                    false,
+                    "A new planet... It has most certainly been a while.",
+                ),
+            ],
         }
     }
 }
 
 struct Particle {
     rect: Rectangle,
+    circle: Circle,
+    is_rect: bool,
     velx: f32,
     vely: f32,
     velr: f32,
@@ -517,9 +522,12 @@ struct ParticleSystem {
     spawn_time: f64,
     lifetime: f64,
     host_rect: Rectangle,
+    host_circle: Circle,
+    is_rect: bool,
     direction: Vector,
     color: Color,
     opacity: f32,
+    vel_multiplier: f32,
 }
 
 impl ParticleSystem {
@@ -527,9 +535,12 @@ impl ParticleSystem {
         spawn_time: f64,
         lifetime: f64,
         host_rect: Rectangle,
+        host_circle: Circle,
+        is_rect: bool,
         direction: Vector,
         color: Color,
         opacity: f32,
+        vel_multiplier: f32,
     ) -> Self {
         Self {
             particles: Vec::new(),
@@ -537,9 +548,12 @@ impl ParticleSystem {
             spawn_time,
             lifetime,
             host_rect,
+            host_circle,
+            is_rect,
             direction,
             color,
             opacity,
+            vel_multiplier,
         }
     }
 
@@ -549,9 +563,14 @@ impl ParticleSystem {
             if self.particles[i].life_timer > self.particles[i].lifetime {
                 self.particles.swap_remove(i);
             } else {
-                self.particles[i].rect.pos.x += self.particles[i].velx * dt as f32;
-                self.particles[i].rect.pos.y += self.particles[i].vely * dt as f32;
-                self.particles[i].r += self.particles[i].velr * dt as f32;
+                if self.is_rect {
+                    self.particles[i].rect.pos.x += self.particles[i].velx * dt as f32;
+                    self.particles[i].rect.pos.y += self.particles[i].vely * dt as f32;
+                    self.particles[i].r += self.particles[i].velr * dt as f32;
+                } else {
+                    self.particles[i].circle.pos.x += self.particles[i].velx * dt as f32;
+                    self.particles[i].circle.pos.y += self.particles[i].vely * dt as f32;
+                }
             }
         }
 
@@ -560,16 +579,21 @@ impl ParticleSystem {
             self.spawn_timer -= self.spawn_time;
             self.particles.push(Particle {
                 rect: self.host_rect,
-                velx: rand::thread_rng()
+                circle: self.host_circle,
+                is_rect: self.is_rect,
+                velx: (rand::thread_rng()
                     .gen_range(-PARTICLE_RAND_VEL_RANGE, PARTICLE_RAND_VEL_RANGE)
-                    + self.direction.x,
-                vely: rand::thread_rng()
+                    + self.direction.x)
+                    * self.vel_multiplier,
+                vely: (rand::thread_rng()
                     .gen_range(-PARTICLE_RAND_VEL_RANGE, PARTICLE_RAND_VEL_RANGE)
-                    + self.direction.y,
+                    + self.direction.y)
+                    * self.vel_multiplier,
                 // velx: self.direction.x,
                 // vely: self.direction.y,
                 velr: rand::thread_rng()
-                    .gen_range(-PARTICLE_RAND_ROT_RANGE, PARTICLE_RAND_ROT_RANGE),
+                    .gen_range(-PARTICLE_RAND_ROT_RANGE, PARTICLE_RAND_ROT_RANGE)
+                    * self.vel_multiplier,
                 r: rand::thread_rng().gen_range(0.0, 90.0),
                 lifetime: self.lifetime,
                 life_timer: 0.0,
@@ -583,15 +607,20 @@ impl ParticleSystem {
         }
         for particle in &mut self.particles {
             self.color.a = (1.0 - (particle.life_timer / particle.lifetime) as f32) * self.opacity;
-            let pre_transform =
-                Transform::translate((-particle.rect.size.x / 2.0, -particle.rect.size.y / 2.0))
-                    * Transform::rotate(particle.r);
-            window.draw_ex(
-                &particle.rect,
-                Col(self.color),
-                transform * pre_transform,
-                1,
-            );
+            if particle.is_rect {
+                let pre_transform = Transform::translate((
+                    -particle.rect.size.x / 2.0,
+                    -particle.rect.size.y / 2.0,
+                )) * Transform::rotate(particle.r);
+                window.draw_ex(
+                    &particle.rect,
+                    Col(self.color),
+                    transform * pre_transform,
+                    1,
+                );
+            } else {
+                window.draw_ex(&particle.circle, Col(self.color), transform, 1);
+            }
         }
     }
 }
@@ -608,16 +637,27 @@ impl RotatingParticleSystem {
         spawn_time: f64,
         lifetime: f64,
         host_rect: Rectangle,
+        host_circle: Circle,
+        is_rect: bool,
         direction: Vector,
         color: Color,
         opacity: f32,
         rotation: f32,
         velr: f32,
         offset: f32,
+        vel_multiplier: f32,
     ) -> Self {
         RotatingParticleSystem {
             particle_system: ParticleSystem::new(
-                spawn_time, lifetime, host_rect, direction, color, opacity,
+                spawn_time,
+                lifetime,
+                host_rect,
+                host_circle,
+                is_rect,
+                direction,
+                color,
+                opacity,
+                vel_multiplier,
             ),
             r: rotation,
             velr,
@@ -641,17 +681,26 @@ impl RotatingParticleSystem {
         self.particle_system.direction =
             Transform::rotate(self.r) * Vector::new(0.0, -PARTICLE_RAND_VEL_DIST);
         self.particle_system.draw(window, transform);
-        let mut moved_rect = self.particle_system.host_rect;
-        moved_rect.pos += Transform::rotate(self.r) * Vector::new(self.offset, 0.0);
-        let mut solid_color = self.particle_system.color;
-        solid_color.a = self.particle_system.opacity;
-        window.draw_ex(
-            &moved_rect,
-            Col(solid_color),
-            Transform::translate((-moved_rect.size.x / 2.0, -moved_rect.size.y / 2.0))
-                * Transform::rotate(self.r * 1.3),
-            1,
-        );
+        if self.particle_system.is_rect {
+            let mut moved_rect = self.particle_system.host_rect;
+            moved_rect.pos += Transform::rotate(self.r) * Vector::new(self.offset, 0.0);
+            let mut solid_color = self.particle_system.color;
+            solid_color.a = self.particle_system.opacity;
+            window.draw_ex(
+                &moved_rect,
+                Col(solid_color),
+                transform
+                    * Transform::translate((-moved_rect.size.x / 2.0, -moved_rect.size.y / 2.0))
+                    * Transform::rotate(self.r * 1.3),
+                1,
+            );
+        } else {
+            let mut moved_cir = self.particle_system.host_circle;
+            moved_cir.pos += Transform::rotate(self.r) * Vector::new(self.offset, 0.0);
+            let mut solid_color = self.particle_system.color;
+            solid_color.a = self.particle_system.opacity;
+            window.draw_ex(&moved_cir, Col(solid_color), transform, 1);
+        }
     }
 }
 
@@ -671,12 +720,7 @@ struct ExplConvParticleSystem {
 }
 
 impl ExplConvParticleSystem {
-    fn new(
-        lifetime: f64,
-        host_circle: Circle,
-        color: Color,
-        opacity: f32,
-    ) -> Self {
+    fn new(lifetime: f64, host_circle: Circle, color: Color, opacity: f32) -> Self {
         ExplConvParticleSystem {
             particles: Vec::new(),
             lifetime,
@@ -704,7 +748,7 @@ impl ExplConvParticleSystem {
         if self.life_timer >= self.lifetime {
             if !self.particles.is_empty() {
                 self.particles.clear();
-                planets.push(Planet{ circle: self.host_circle, color: self.color, });
+                planets.push(Planet::new(self.host_circle, self.color));
                 return true;
             }
             return false;
@@ -713,15 +757,15 @@ impl ExplConvParticleSystem {
         if self.life_timer < self.lifetime / 2.0 {
             let amount = interp_sq_inv((self.life_timer / self.lifetime) as f32 * 2.0);
             for particle in &mut self.particles {
-                let dir = Transform::rotate(particle.r) * Vector::new(
-                    particle.offset * amount, 0.0);
+                let dir =
+                    Transform::rotate(particle.r) * Vector::new(particle.offset * amount, 0.0);
                 particle.circle.pos = dir + self.host_circle.pos;
             }
         } else {
             let amount = 1.0 - interp_sq(((self.life_timer / self.lifetime) as f32 - 0.5) * 2.0);
             for particle in &mut self.particles {
-                let dir = Transform::rotate(particle.r) * Vector::new(
-                    particle.offset * amount, 0.0);
+                let dir =
+                    Transform::rotate(particle.r) * Vector::new(particle.offset * amount, 0.0);
                 particle.circle.pos = dir + self.host_circle.pos;
             }
         }
@@ -734,12 +778,7 @@ impl ExplConvParticleSystem {
         }
         for particle in &mut self.particles {
             self.color.a = ((self.life_timer / self.lifetime) as f32 / 2.0 + 0.5) * self.opacity;
-            window.draw_ex(
-                &particle.circle,
-                Col(self.color),
-                transform,
-                1,
-            );
+            window.draw_ex(&particle.circle, Col(self.color), transform, 1);
         }
     }
 }
@@ -747,6 +786,36 @@ impl ExplConvParticleSystem {
 struct Planet {
     circle: Circle,
     color: Color,
+    particle_system: ParticleSystem,
+}
+
+impl Planet {
+    fn new(circle: Circle, color: Color) -> Self {
+        Planet {
+            circle,
+            color,
+            particle_system: ParticleSystem::new(
+                3500.0,
+                900.0,
+                Rectangle::new((0.0, 0.0), (1.0, 1.0)),
+                circle,
+                false,
+                Vector::new(0.0, 0.0),
+                color,
+                1.0,
+                0.3,
+            ),
+        }
+    }
+
+    fn update(&mut self, dt: f64) {
+        self.particle_system.update(dt);
+    }
+
+    fn draw(&mut self, window: &mut Window, transform: Transform) {
+        self.particle_system.draw(window, transform);
+        window.draw_ex(&self.circle, Col(self.color), transform, 1);
+    }
 }
 
 struct GameState {
@@ -802,20 +871,26 @@ impl State for GameState {
                 PP_GEN_RATE,
                 1000.0,
                 Rectangle::new((400.0, 300.0), (32.0, 32.0)),
+                Circle::new((100.0, 100.0), 32.0),
+                true,
                 Vector::new(0.0, 0.0),
                 Color::WHITE,
                 0.0,
+                1.0,
             ),
             joining_particles: RotatingParticleSystem::new(
                 PP_GEN_RATE,
                 1000.0,
                 Rectangle::new((400.0, 300.0), (16.0, 16.0)),
+                Circle::new((100.0, 100.0), 32.0),
+                true,
                 Vector::new(0.0, 0.0),
                 Color::GREEN,
                 0.0,
                 0.0,
                 0.1,
                 JOINING_FAR_DIST,
+                1.0,
             ),
             is_create_mode: false,
             click_release_time: 0.0,
@@ -852,8 +927,10 @@ impl State for GameState {
                             if self.click_release_time < DOUBLE_CLICK_TIME {
                                 if self.state == 8 {
                                     let mut expl_conv_system = ExplConvParticleSystem::new(
-                                        1500.0, Circle::new(self.mouse_pos, 20.0),
-                                        Color::GREEN, 1.0,
+                                        1500.0,
+                                        Circle::new(self.mouse_pos, 20.0),
+                                        Color::GREEN,
+                                        1.0,
                                     );
                                     expl_conv_system.activate(30, 200.0);
                                     self.expl_conv_p_systems.push(expl_conv_system);
@@ -861,8 +938,7 @@ impl State for GameState {
                                     self.state_dirty = true;
                                 }
                             }
-                        }
-                        else if self.selection_mode {
+                        } else if self.selection_mode {
                             if let Some(idx) = self.current_item {
                                 match self.state {
                                     0 => {
@@ -1182,6 +1258,9 @@ impl State for GameState {
                 self.expl_conv_p_systems.swap_remove(i);
             }
         }
+        for planet in &mut self.planets {
+            planet.update(dt);
+        }
 
         Ok(())
     }
@@ -1263,7 +1342,7 @@ impl State for GameState {
             expl_conv_ps.draw(window, Transform::IDENTITY);
         }
         for planet in &mut self.planets {
-            window.draw(&planet.circle, Col(planet.color));
+            planet.draw(window, Transform::IDENTITY);
         }
         Ok(())
     }
