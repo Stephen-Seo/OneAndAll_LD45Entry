@@ -147,7 +147,13 @@ impl Menu {
         Menu {
             items: vec![
                 item,
-                Menu::instant_text(70.0, 50.0, 55.0, true, "One And All - A Ludum Dare 45 Entry"),
+                Menu::instant_text(
+                    70.0,
+                    50.0,
+                    55.0,
+                    true,
+                    "One And All - A Ludum Dare 45 Entry",
+                ),
                 Menu::instant_text(
                     25.0,
                     HEIGHT_F - 100.0,
@@ -1113,6 +1119,10 @@ impl State for GameState {
                                             self.joining_particles.particle_system.color =
                                                 Color::from_rgba(0xFF, 0xAA, 0xAA, 1.0);
                                         }
+                                        self.s_get.execute(|s| {
+                                            s.set_volume(0.7);
+                                            s.play()
+                                        })?;
                                     }
                                     _ => {
                                         self.state = 0;
