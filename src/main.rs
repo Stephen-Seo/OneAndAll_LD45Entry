@@ -994,10 +994,121 @@ impl Star {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+struct Fish {
+    pos: Vector,
+    r: f32,
+    swim_time: f64,
+    swim_timer: f64,
+    swim_v: f32,
+    anim_timer: f64,
+    anim_time: f64,
+    color: Color,
+}
+
+enum FishState {
+    Idle,
+    Swim,
+}
+
+impl Fish {
+    fn new(pos: Vector, r: f32, color: Color) -> Self {
+        let anim_timer = rand::thread_rng().gen_range(800.0, 1000.0);
+        Self {
+            pos,
+            r,
+            swim_time: 800.0,
+            swim_timer: 800.0,
+            swim_v: 0.2,
+            anim_timer,
+            anim_time: anim_timer,
+            color,
+        }
+    }
+
+    fn set_next(&mut self, state: FishState) {
+        match state {
+            FishState::Idle => {
+                self.swim_time = rand::thread_rng().gen_range(1100.0, 2400.0);
+                self.swim_timer = self.swim_time;
+                self.anim_timer = 1600.0;
+                self.anim_time = 1600.0;
+                self.swim_v = 0.0;
+            }
+            FishState::Swim => {
+                self.swim_time = rand::thread_rng().gen_range(1400.0, 2300.0);
+                self.swim_timer = self.swim_time;
+                self.r = rand::thread_rng().gen_range(0.0, 360.0);
+                self.anim_timer = rand::thread_rng().gen_range(600.0, 1000.0);
+                self.anim_time = self.anim_timer;
+                self.swim_v = (self.anim_timer / 8000.0) as f32;
+            }
+        }
+    }
+
+    fn update(&mut self, dt: f64) {
+        self.swim_time -= dt;
+        if self.swim_time < 220.0 {
+            self.swim_v /= 1.1;
+        }
+        if self.swim_time <= 0.0 {
+            if rand::thread_rng().gen_bool(0.4) {
+                self.set_next(FishState::Idle);
+            } else {
+                self.set_next(FishState::Swim);
+            }
+        }
+
+        self.anim_timer -= dt;
+        if self.anim_timer <= 0.0 {
+            self.anim_timer = self.anim_time;
+        }
+
+        self.pos += Transform::rotate(self.r) * Vector::new(self.swim_v, 0.0) * dt as f32;
+    }
+
+    fn draw(
+        &mut self,
+        fish_body: &Image,
+        fish_tail: &Image,
+        window: &mut Window,
+        transform: Transform,
+    ) {
+        let anim_angle = ((self.anim_timer / self.anim_time) * std::f64::consts::PI * 2.0).sin();
+        let mut body_rect = fish_body.area();
+        body_rect.pos = self.pos - body_rect.size / 2.0;
+        let body_tr =
+            Transform::rotate(anim_angle as f32 * 30.0) * Transform::rotate(self.r + 180.0);
+        window.draw_ex(
+            &body_rect,
+            Blended(fish_body, self.color),
+            transform * body_tr,
+            1,
+        );
+        let mut tail_rect = fish_tail.area();
+        tail_rect.pos = self.pos - tail_rect.size / 2.0;
+        let anim_angle = ((self.anim_timer / self.anim_time) * std::f64::consts::PI * 2.0
+            - std::f64::consts::PI / 3.0)
+            .sin();
+        let tail_tr = body_tr
+            * Transform::translate((body_rect.size.x / 1.5, 0.0))
+            * Transform::translate((-tail_rect.size.x / 2.0, 0.0))
+            * Transform::rotate(-anim_angle as f32 * 45.0)
+            * Transform::translate((tail_rect.size.x / 2.0, 0.0));
+        window.draw_ex(
+            &tail_rect,
+            Blended(fish_tail, self.color),
+            transform * tail_tr,
+            1,
+        );
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 struct SaveData {
     planets: Vec<Planet>,
     stars: Vec<Star>,
+    fishes: Vec<Fish>,
     player: Rectangle,
     joining_particles: RotatingParticleSystem,
 }
@@ -1018,6 +1129,9 @@ struct GameState {
     music2: Asset<Sound>,
     i_star: Option<Asset<Image>>,
     i_star_actual: Option<Image>,
+    i_fish: Asset<Image>,
+    i_fish_body: Option<Image>,
+    i_fish_tail: Option<Image>,
     music_on: bool,
     music_timer: f64,
     menu: Menu,
@@ -1039,6 +1153,7 @@ struct GameState {
     expl_conv_p_systems: Vec<ExplConvParticleSystem>,
     planets: Vec<Planet>,
     stars: Vec<Star>,
+    fishes: Vec<Fish>,
     camera: Rectangle,
     move_to: Vector,
     save_load_notification: Option<SaveLoadNotification>,
@@ -1057,6 +1172,9 @@ impl State for GameState {
             music2: Asset::new(Sound::load("music2.mp3")),
             i_star: Some(Asset::new(Image::load("star.png"))),
             i_star_actual: None,
+            i_fish: Asset::new(Image::load("fish.png")),
+            i_fish_body: None,
+            i_fish_tail: None,
             music_on: false,
             music_timer: 0.0,
             menu: Menu::start(),
@@ -1101,6 +1219,7 @@ impl State for GameState {
             expl_conv_p_systems: Vec::new(),
             planets: Vec::new(),
             stars: Vec::new(),
+            fishes: Vec::new(),
             camera: Rectangle::new((0.0, 0.0), (WIDTH_F, HEIGHT_F)),
             move_to: Vector::new(400.0, 300.0),
             save_load_notification: None,
@@ -1155,7 +1274,7 @@ impl State for GameState {
                                 } else if self.state == 10 {
                                     let mut rng = rand::thread_rng();
                                     let rand_out = rng.gen_range(0.0, 1.0);
-                                    if rand_out < 0.75 {
+                                    if rand_out < 0.6 {
                                         // spawn planet
                                         let mut expl_conv_system = ExplConvParticleSystem::new(
                                             rng.gen_range(1200.0, 1600.0),
@@ -1173,7 +1292,7 @@ impl State for GameState {
                                             rng.gen_range(150.0, 300.0),
                                         );
                                         self.expl_conv_p_systems.push(expl_conv_system);
-                                    } else {
+                                    } else if rand_out < 0.85 {
                                         // spawn star
                                         let rot_clockwise = rng.gen_bool(0.5);
                                         self.stars.push(Star::new(
@@ -1191,6 +1310,20 @@ impl State for GameState {
                                             },
                                             rng.gen_range(0.0, 90.0),
                                         ));
+                                    } else {
+                                        // spawn fish
+                                        for i in 0..rng.gen_range(1, 3) {
+                                            self.fishes.push(Fish::new(
+                                                self.mouse_pos,
+                                                rng.gen_range(0.0, 360.0),
+                                                Color::from_rgba(
+                                                    rng.gen_range(0x44, 0xFF),
+                                                    rng.gen_range(0x44, 0xFF),
+                                                    rng.gen_range(0x44, 0xFF),
+                                                    1.0,
+                                                ),
+                                            ));
+                                        }
                                     }
                                     self.s_boom.execute(|s| {
                                         s.set_volume(0.8);
@@ -1318,6 +1451,7 @@ impl State for GameState {
                                 let save_data = SaveData {
                                     planets: self.planets.clone(),
                                     stars: self.stars.clone(),
+                                    fishes: self.fishes.clone(),
                                     player: self.player.clone(),
                                     joining_particles: self.joining_particles.clone(),
                                 };
@@ -1333,6 +1467,7 @@ impl State for GameState {
                             if let Ok(save_data) = load_result {
                                 self.planets = save_data.planets;
                                 self.stars = save_data.stars;
+                                self.fishes = save_data.fishes;
                                 self.player = save_data.player;
                                 self.joining_particles = save_data.joining_particles;
                                 self.expl_conv_p_systems.clear();
@@ -1473,6 +1608,7 @@ impl State for GameState {
                     self.expl_conv_p_systems.clear();
                     self.planets.clear();
                     self.stars.clear();
+                    self.fishes.clear();
                     self.player.pos = Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0);
                     self.move_to = Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0);
                     self.camera.pos = Vector::new(0.0, 0.0);
@@ -1674,6 +1810,27 @@ impl State for GameState {
             }
         }
 
+        if self.i_fish_body.is_none() {
+            let mut body: Option<Image> = None;
+            self.i_fish.execute(|i| {
+                body = Some(i.subimage(Rectangle::new((0.0, 0.0), (32.0, 16.0))));
+                Ok(())
+            })?;
+            self.i_fish_body = body;
+        }
+        if self.i_fish_tail.is_none() {
+            let mut tail: Option<Image> = None;
+            self.i_fish.execute(|i| {
+                tail = Some(i.subimage(Rectangle::new((32.0, 0.0), (16.0, 16.0))));
+                Ok(())
+            })?;
+            self.i_fish_tail = tail;
+        }
+
+        for fish in &mut self.fishes {
+            fish.update(dt);
+        }
+
         Ok(())
     }
 
@@ -1760,6 +1917,14 @@ impl State for GameState {
         if let Some(i) = &mut self.i_star_actual {
             for star in &mut self.stars {
                 star.draw(i, window, Transform::IDENTITY);
+            }
+        }
+
+        if let Some(body) = &self.i_fish_body {
+            if let Some(tail) = &self.i_fish_tail {
+                for fish in &mut self.fishes {
+                    fish.draw(body, tail, window, Transform::IDENTITY);
+                }
             }
         }
 
