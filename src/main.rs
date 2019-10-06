@@ -137,7 +137,7 @@ impl Menu {
                 text_image: None,
                 text_c: Color::WHITE,
                 h_c: Color::from_rgba(0x66, 0xFF, 0xFF, 1.0),
-                c: Color::from_rgba(0x33, 0xFF, 0xFF, 1.0),
+                c: Color::from_rgba(0x33, 0xDD, 0xDD, 1.0),
             },
             is_hover: false,
             is_focus: false,
@@ -532,7 +532,7 @@ impl Menu {
                     HEIGHT_F - 20.0,
                     20.0,
                     true,
-                    "S - save; L - load (can load from the start)",
+                    "S - save; L - load (can load from the start); R - reset",
                 ),
             ],
         }
@@ -859,6 +859,7 @@ impl Planet {
         };
 
         let r: f32 = rand::thread_rng().gen_range(0.0, 360.0);
+        let clockwise = rand::thread_rng().gen_bool(0.5);
         for i in 0..rand::thread_rng().gen_range(0, MAX_MOONS) {
             planet.moons.push(RotatingParticleSystem::new(
                 rand::thread_rng().gen_range(1000.0, 2600.0),
@@ -870,7 +871,11 @@ impl Planet {
                 color,
                 1.0,
                 r,
-                rand::thread_rng().gen_range(0.05, 0.15),
+                if clockwise {
+                    rand::thread_rng().gen_range(0.05, 0.15)
+                } else {
+                    rand::thread_rng().gen_range(-0.15, -0.05)
+                },
                 rand::thread_rng().gen_range(35.0, 200.0),
                 0.2,
             ));
@@ -1071,7 +1076,7 @@ impl State for GameState {
                                         s.play()
                                     })?;
                                 }
-                            } else {
+                            } else if self.state == 10 {
                                 self.click_time = Some(0.0);
                                 self.click_pos = self.mouse_pos;
                             }
@@ -1218,6 +1223,12 @@ impl State for GameState {
                                 });
                             }
                         }
+                        Key::R => {
+                            if self.state == 10 {
+                                self.state = 0;
+                                self.state_dirty = true;
+                            }
+                        }
                         _ => (),
                     }
                 }
@@ -1333,6 +1344,10 @@ impl State for GameState {
                     self.joining_particles.particle_system.opacity = 0.0;
                     self.expl_conv_p_systems.clear();
                     self.planets.clear();
+                    self.player.pos = Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0);
+                    self.move_to = Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0);
+                    self.camera.pos = Vector::new(0.0, 0.0);
+                    self.click_time = None;
                 }
             }
         }
