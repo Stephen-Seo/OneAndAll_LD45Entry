@@ -2,7 +2,7 @@ use quicksilver::{
     geom::{Circle, Rectangle, Transform, Vector},
     graphics::{
         Background::{Col, Img},
-        Color, Font, FontStyle, Image,
+        Color, Font, FontStyle, Image, View,
     },
     input::{ButtonState, Key},
     lifecycle::{run, Asset, Event, Settings, State, Window},
@@ -512,6 +512,18 @@ impl Menu {
             ],
         }
     }
+
+    fn s_10() -> Menu {
+        Menu {
+            items: vec![Menu::instant_text(
+                20.0,
+                HEIGHT_F - 20.0,
+                20.0,
+                true,
+                "Single click to move, Double-click to create something",
+            )],
+        }
+    }
 }
 
 struct Particle {
@@ -891,9 +903,14 @@ struct GameState {
     joining_particles: RotatingParticleSystem,
     is_create_mode: bool,
     click_release_time: f64,
+    dbl_click_timeout: Option<f64>,
+    click_time: Option<f64>,
+    click_pos: Vector,
     mouse_pos: Vector,
     expl_conv_p_systems: Vec<ExplConvParticleSystem>,
     planets: Vec<Planet>,
+    camera: Rectangle,
+    move_to: Vector,
 }
 
 impl State for GameState {
@@ -944,9 +961,14 @@ impl State for GameState {
             ),
             is_create_mode: false,
             click_release_time: 0.0,
+            dbl_click_timeout: None,
+            click_time: None,
+            click_pos: Vector::new(0.0, 0.0),
             mouse_pos: Vector::new(0.0, 0.0),
             expl_conv_p_systems: Vec::new(),
             planets: Vec::new(),
+            camera: Rectangle::new((0.0, 0.0), (WIDTH_F, HEIGHT_F)),
+            move_to: Vector::new(400.0, 300.0),
         })
     }
 
@@ -970,11 +992,16 @@ impl State for GameState {
             }
             Event::MouseButton(button, state) => {
                 if let ButtonState::Released = state {
-                    self.click_release_time = 0.0;
+                    if self.dbl_click_timeout.is_none() {
+                        self.click_release_time = 0.0;
+                    }
                 } else if let ButtonState::Pressed = state {
                     if self.current_finished {
                         if self.is_create_mode {
                             if self.click_release_time < DOUBLE_CLICK_TIME {
+                                self.click_release_time = DOUBLE_CLICK_TIME;
+                                self.dbl_click_timeout = Some(0.0);
+                                self.click_time = None;
                                 if self.state == 8 {
                                     let mut expl_conv_system = ExplConvParticleSystem::new(
                                         1500.0,
@@ -986,7 +1013,28 @@ impl State for GameState {
                                     self.expl_conv_p_systems.push(expl_conv_system);
                                     self.state = 9;
                                     self.state_dirty = true;
+                                } else if self.state == 10 {
+                                    let mut rng = rand::thread_rng();
+                                    let mut expl_conv_system = ExplConvParticleSystem::new(
+                                        rng.gen_range(1200.0, 1600.0),
+                                        Circle::new(self.mouse_pos, rng.gen_range(15.0, 25.0)),
+                                        Color::from_rgba(
+                                            rng.gen_range(0x44, 0xFF),
+                                            rng.gen_range(0x44, 0xFF),
+                                            rng.gen_range(0x44, 0xFF),
+                                            1.0,
+                                        ),
+                                        1.0,
+                                    );
+                                    expl_conv_system.activate(
+                                        rng.gen_range(13, 40),
+                                        rng.gen_range(150.0, 300.0),
+                                    );
+                                    self.expl_conv_p_systems.push(expl_conv_system);
                                 }
+                            } else {
+                                self.click_time = Some(0.0);
+                                self.click_pos = self.mouse_pos;
                             }
                         } else if self.selection_mode {
                             if let Some(idx) = self.current_item {
@@ -1033,6 +1081,7 @@ impl State for GameState {
                                 0 | 1 => self.state += 1,
                                 3 | 4 | 5 | 6 => self.state = 7,
                                 7 => self.state = 8,
+                                9 => self.state = 10,
                                 _ => self.state = 0,
                             }
                             self.state_dirty = true;
@@ -1101,6 +1150,26 @@ impl State for GameState {
         let dt = window.update_rate();
 
         self.click_release_time += dt;
+        if let Some(t) = &mut self.click_time {
+            *t += dt;
+            if *t > DOUBLE_CLICK_TIME {
+                self.move_to = self.click_pos; // - Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0);
+            }
+        }
+
+        if let Some(t) = &mut self.dbl_click_timeout {
+            *t += dt;
+            if *t > 300.0 {
+                self.dbl_click_timeout = None;
+            }
+        }
+
+        self.player.pos += (self.move_to - self.player.pos) / 20.0;
+        self.player_particles.host_rect = self.player;
+        self.camera.pos +=
+            (self.player.pos - Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0) - self.camera.pos) / 40.0;
+        window.set_view(View::new(self.camera));
+
         self.player_r += dt / 10.0;
 
         if self.state_dirty {
@@ -1164,6 +1233,12 @@ impl State for GameState {
                     self.current_finished = false;
                     self.selection_mode = false;
                     self.is_create_mode = false;
+                }
+                10 => {
+                    self.menu = Menu::s_10();
+                    self.current_finished = false;
+                    self.selection_mode = false;
+                    self.is_create_mode = true;
                 }
                 _ => {
                     self.menu = Menu::start();
