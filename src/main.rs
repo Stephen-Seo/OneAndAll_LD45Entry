@@ -1312,7 +1312,7 @@ impl State for GameState {
                                         ));
                                     } else {
                                         // spawn fish
-                                        for i in 0..rng.gen_range(1, 3) {
+                                        for i in 0..rng.gen_range(1, 4) {
                                             self.fishes.push(Fish::new(
                                                 self.mouse_pos,
                                                 rng.gen_range(0.0, 360.0),
