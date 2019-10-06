@@ -1,15 +1,17 @@
 use quicksilver::{
     geom::{Circle, Rectangle, Transform, Vector},
     graphics::{
-        Background::{Col, Img},
+        Background::{Blended, Col, Img},
         Color, Font, FontStyle, Image, View,
     },
     input::{ButtonState, Key},
     lifecycle::{run, Asset, Event, Settings, State, Window},
+    saving::{load, save},
     sound::Sound,
     Result,
 };
 use rand::prelude::*;
+use serde::{Deserialize, Serialize};
 
 const WIDTH_F: f32 = 800.0;
 const HEIGHT_F: f32 = 600.0;
@@ -23,6 +25,7 @@ const JOINING_OPACITY_RATE: f32 = 0.00013;
 const JOINING_FAR_DIST: f32 = 700.0;
 const JOINING_NEAR_DIST: f32 = 150.0;
 const DOUBLE_CLICK_TIME: f64 = 350.0;
+const SL_NOTIF_TIME: f64 = 5000.0;
 
 fn interp_sq_inv(x: f32) -> f32 {
     if x < 0.0 {
@@ -515,17 +518,27 @@ impl Menu {
 
     fn s_10() -> Menu {
         Menu {
-            items: vec![Menu::instant_text(
-                20.0,
-                HEIGHT_F - 20.0,
-                20.0,
-                true,
-                "Single click to move, Double-click to create something",
-            )],
+            items: vec![
+                Menu::instant_text(
+                    20.0,
+                    HEIGHT_F - 40.0,
+                    20.0,
+                    true,
+                    "Single click to move, Double-click to create something",
+                ),
+                Menu::instant_text(
+                    20.0,
+                    HEIGHT_F - 20.0,
+                    20.0,
+                    true,
+                    "S - save; L - load (can load from the start)",
+                ),
+            ],
         }
     }
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 struct Particle {
     rect: Rectangle,
     circle: Circle,
@@ -538,6 +551,7 @@ struct Particle {
     life_timer: f64,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 struct ParticleSystem {
     particles: Vec<Particle>,
     spawn_timer: f64,
@@ -647,6 +661,7 @@ impl ParticleSystem {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 struct RotatingParticleSystem {
     particle_system: ParticleSystem,
     r: f32,
@@ -813,6 +828,7 @@ impl ExplConvParticleSystem {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 struct Planet {
     circle: Circle,
     color: Color,
@@ -841,7 +857,7 @@ impl Planet {
             moons: Vec::new(),
         };
 
-        let mut r: f32 = rand::thread_rng().gen_range(0.0, 360.0);
+        let r: f32 = rand::thread_rng().gen_range(0.0, 360.0);
         for i in 0..rand::thread_rng().gen_range(0, 5) {
             planet.moons.push(RotatingParticleSystem::new(
                 rand::thread_rng().gen_range(1000.0, 2600.0),
@@ -880,6 +896,18 @@ impl Planet {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct SaveData {
+    planets: Vec<Planet>,
+    player: Rectangle,
+    joining_particles: RotatingParticleSystem,
+}
+
+enum SaveLoadNotification {
+    Save { text: Option<Image>, timer: f64 },
+    Load { text: Option<Image>, timer: f64 },
+}
+
 struct GameState {
     s_boom: Asset<Sound>,
     s_get: Asset<Sound>,
@@ -911,6 +939,7 @@ struct GameState {
     planets: Vec<Planet>,
     camera: Rectangle,
     move_to: Vector,
+    save_load_notification: Option<SaveLoadNotification>,
 }
 
 impl State for GameState {
@@ -969,6 +998,7 @@ impl State for GameState {
             planets: Vec::new(),
             camera: Rectangle::new((0.0, 0.0), (WIDTH_F, HEIGHT_F)),
             move_to: Vector::new(400.0, 300.0),
+            save_load_notification: None,
         })
     }
 
@@ -1141,6 +1171,48 @@ impl State for GameState {
                     }
                 }
             }
+            Event::Key(key, state) => {
+                if let ButtonState::Pressed = state {
+                    match key {
+                        Key::S => {
+                            if self.state == 10 {
+                                let save_data = SaveData {
+                                    planets: self.planets.clone(),
+                                    player: self.player.clone(),
+                                    joining_particles: self.joining_particles.clone(),
+                                };
+                                save("OneAndAll_LD45", "slot0", &save_data)?;
+                                self.save_load_notification = Some(SaveLoadNotification::Save {
+                                    text: None,
+                                    timer: SL_NOTIF_TIME,
+                                });
+                            }
+                        }
+                        Key::L => {
+                            let load_result = load::<SaveData>("OneAndAll_LD45", "slot0");
+                            if let Ok(save_data) = load_result {
+                                self.planets = save_data.planets.clone();
+                                self.player = save_data.player.clone();
+                                self.joining_particles = save_data.joining_particles.clone();
+                                self.move_to = self.player.pos;
+                                self.camera.pos =
+                                    self.player.pos - Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0);
+                                self.dbl_click_timeout = None;
+                                self.click_time = None;
+                                self.click_release_time = DOUBLE_CLICK_TIME;
+
+                                self.state = 10;
+                                self.state_dirty = true;
+                                self.save_load_notification = Some(SaveLoadNotification::Load {
+                                    text: None,
+                                    timer: SL_NOTIF_TIME,
+                                });
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+            }
             _ => (),
         }
         Ok(())
@@ -1165,7 +1237,9 @@ impl State for GameState {
         }
 
         self.player.pos += (self.move_to - self.player.pos) / 20.0;
-        self.player_particles.host_rect = self.player;
+        self.player_particles.host_rect.pos = self.player.pos;
+        self.joining_particles.particle_system.host_rect.pos +=
+            (self.player.pos - self.joining_particles.particle_system.host_rect.pos) / 30.0;
         self.camera.pos +=
             (self.player.pos - Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0) - self.camera.pos) / 40.0;
         window.set_view(View::new(self.camera));
@@ -1277,7 +1351,19 @@ impl State for GameState {
                 self.music_timer = 0.0;
                 self.music2.execute(|m2| m2.play())?;
             }
+        } else if self.state == 10 {
+            let mut music_on = false;
+            self.music2.execute(|m2| {
+                music_on = true;
+                m2.set_volume(0.6);
+                m2.play()
+            })?;
+            if music_on {
+                self.music_on = true;
+                self.music_timer = 0.0;
+            }
         }
+
         for i in 0..self.menu.items.len() {
             let mi: &mut MenuItem = &mut self.menu.items[i];
             if !mi.is_loaded {
@@ -1387,6 +1473,37 @@ impl State for GameState {
             planet.update(dt);
         }
 
+        if let Some(sl) = &mut self.save_load_notification {
+            match sl {
+                SaveLoadNotification::Save { text, timer } => {
+                    *timer -= dt;
+                    if *timer <= 0.0 {
+                        self.save_load_notification = None;
+                    } else if text.is_none() {
+                        self.font.execute(|f| {
+                            *text = Some(
+                                f.render("Saved the Game", &FontStyle::new(45.0, Color::WHITE))?,
+                            );
+                            Ok(())
+                        })?;
+                    }
+                }
+                SaveLoadNotification::Load { text, timer } => {
+                    *timer -= dt;
+                    if *timer <= 0.0 {
+                        self.save_load_notification = None;
+                    } else if text.is_none() {
+                        self.font.execute(|f| {
+                            *text = Some(
+                                f.render("Loaded the Game", &FontStyle::new(45.0, Color::WHITE))?,
+                            );
+                            Ok(())
+                        })?;
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -1469,6 +1586,22 @@ impl State for GameState {
         for planet in &mut self.planets {
             planet.draw(window, Transform::IDENTITY);
         }
+
+        if let Some(sl) = &mut self.save_load_notification {
+            match sl {
+                SaveLoadNotification::Save { text, timer }
+                | SaveLoadNotification::Load { text, timer } => {
+                    if let Some(i) = text {
+                        let mut c = Color::WHITE;
+                        c.a = (*timer / SL_NOTIF_TIME) as f32;
+                        let mut image_rect = i.area();
+                        image_rect.pos = self.camera.pos + Vector::new(20.0, 20.0);
+                        window.draw(&image_rect, Blended(i, c));
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 }

@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 quicksilver = "0.3.19"
 rand = "0.7.2"
+serde = { version = "1.0.101", features = ["derive"] }
