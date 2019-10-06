@@ -1331,10 +1331,10 @@ impl State for GameState {
                         Key::L => {
                             let load_result = load::<SaveData>("OneAndAll_LD45", "slot0");
                             if let Ok(save_data) = load_result {
-                                self.planets = save_data.planets.clone();
-                                self.stars = save_data.stars.clone();
-                                self.player = save_data.player.clone();
-                                self.joining_particles = save_data.joining_particles.clone();
+                                self.planets = save_data.planets;
+                                self.stars = save_data.stars;
+                                self.player = save_data.player;
+                                self.joining_particles = save_data.joining_particles;
                                 self.expl_conv_p_systems.clear();
                                 self.move_to = self.player.pos;
                                 self.camera.pos =
