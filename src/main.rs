@@ -666,6 +666,32 @@ impl ParticleSystem {
             }
         }
     }
+
+    fn force_spawn(&mut self, count: usize) {
+        for i in 0..count {
+            self.particles.push(Particle {
+                rect: self.host_rect,
+                circle: self.host_circle,
+                is_rect: self.is_rect,
+                velx: (rand::thread_rng()
+                    .gen_range(-PARTICLE_RAND_VEL_RANGE, PARTICLE_RAND_VEL_RANGE)
+                    + self.direction.x)
+                    * self.vel_multiplier,
+                vely: (rand::thread_rng()
+                    .gen_range(-PARTICLE_RAND_VEL_RANGE, PARTICLE_RAND_VEL_RANGE)
+                    + self.direction.y)
+                    * self.vel_multiplier,
+                // velx: self.direction.x,
+                // vely: self.direction.y,
+                velr: rand::thread_rng()
+                    .gen_range(-PARTICLE_RAND_ROT_RANGE, PARTICLE_RAND_ROT_RANGE)
+                    * self.vel_multiplier,
+                r: rand::thread_rng().gen_range(0.0, 90.0),
+                lifetime: self.lifetime,
+                life_timer: 0.0,
+            });
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -908,9 +934,70 @@ impl Planet {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+struct Star {
+    color: Color,
+    particle_system: ParticleSystem,
+    velr: f32,
+    r: f32,
+}
+
+impl Star {
+    fn new(circle: Circle, color: Color, velr: f32, r: f32) -> Self {
+        let mut star = Star {
+            color,
+            particle_system: ParticleSystem::new(
+                rand::thread_rng().gen_range(80.0, 200.0),
+                850.0,
+                Rectangle::new((0.0, 0.0), (1.0, 1.0)),
+                circle,
+                false,
+                Vector::new(0.0, 0.0),
+                color,
+                1.0,
+                1.0,
+            ),
+            velr,
+            r,
+        };
+
+        if star.color.r < 0.75 {
+            star.color.r = 0.75;
+        }
+        if star.color.g < 0.75 {
+            star.color.g = 0.75;
+        }
+        if star.color.b < 0.75 {
+            star.color.b = 0.75;
+        }
+        star.particle_system
+            .force_spawn(rand::thread_rng().gen_range(20, 45));
+
+        star
+    }
+
+    fn update(&mut self, dt: f64) {
+        self.particle_system.update(dt);
+        self.r += self.velr * dt as f32;
+    }
+
+    fn draw(&mut self, image: &mut Image, window: &mut Window, transform: Transform) {
+        self.particle_system.draw(window, transform);
+        let mut image_rect = image.area();
+        image_rect.pos = self.particle_system.host_circle.pos - image_rect.size / 2.0;
+        window.draw_ex(
+            &image_rect,
+            Blended(image, self.color),
+            transform * Transform::rotate(self.r),
+            1,
+        );
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 struct SaveData {
     planets: Vec<Planet>,
+    stars: Vec<Star>,
     player: Rectangle,
     joining_particles: RotatingParticleSystem,
 }
@@ -929,6 +1016,8 @@ struct GameState {
     s_speak_f: Asset<Sound>,
     font: Asset<Font>,
     music2: Asset<Sound>,
+    i_star: Option<Asset<Image>>,
+    i_star_actual: Option<Image>,
     music_on: bool,
     music_timer: f64,
     menu: Menu,
@@ -949,6 +1038,7 @@ struct GameState {
     mouse_pos: Vector,
     expl_conv_p_systems: Vec<ExplConvParticleSystem>,
     planets: Vec<Planet>,
+    stars: Vec<Star>,
     camera: Rectangle,
     move_to: Vector,
     save_load_notification: Option<SaveLoadNotification>,
@@ -965,6 +1055,8 @@ impl State for GameState {
             s_speak_f: Asset::new(Sound::load("speak_f.mp3")),
             font: Asset::new(Font::load("ClearSans-Regular.ttf")),
             music2: Asset::new(Sound::load("music2.mp3")),
+            i_star: Some(Asset::new(Image::load("star.png"))),
+            i_star_actual: None,
             music_on: false,
             music_timer: 0.0,
             menu: Menu::start(),
@@ -1008,6 +1100,7 @@ impl State for GameState {
             mouse_pos: Vector::new(0.0, 0.0),
             expl_conv_p_systems: Vec::new(),
             planets: Vec::new(),
+            stars: Vec::new(),
             camera: Rectangle::new((0.0, 0.0), (WIDTH_F, HEIGHT_F)),
             move_to: Vector::new(400.0, 300.0),
             save_load_notification: None,
@@ -1061,22 +1154,44 @@ impl State for GameState {
                                     })?;
                                 } else if self.state == 10 {
                                     let mut rng = rand::thread_rng();
-                                    let mut expl_conv_system = ExplConvParticleSystem::new(
-                                        rng.gen_range(1200.0, 1600.0),
-                                        Circle::new(self.mouse_pos, rng.gen_range(15.0, 25.0)),
-                                        Color::from_rgba(
-                                            rng.gen_range(0x44, 0xFF),
-                                            rng.gen_range(0x44, 0xFF),
-                                            rng.gen_range(0x44, 0xFF),
+                                    let rand_out = rng.gen_range(0.0, 1.0);
+                                    if rand_out < 0.75 {
+                                        // spawn planet
+                                        let mut expl_conv_system = ExplConvParticleSystem::new(
+                                            rng.gen_range(1200.0, 1600.0),
+                                            Circle::new(self.mouse_pos, rng.gen_range(15.0, 25.0)),
+                                            Color::from_rgba(
+                                                rng.gen_range(0x44, 0xFF),
+                                                rng.gen_range(0x44, 0xFF),
+                                                rng.gen_range(0x44, 0xFF),
+                                                1.0,
+                                            ),
                                             1.0,
-                                        ),
-                                        1.0,
-                                    );
-                                    expl_conv_system.activate(
-                                        rng.gen_range(13, 40),
-                                        rng.gen_range(150.0, 300.0),
-                                    );
-                                    self.expl_conv_p_systems.push(expl_conv_system);
+                                        );
+                                        expl_conv_system.activate(
+                                            rng.gen_range(13, 40),
+                                            rng.gen_range(150.0, 300.0),
+                                        );
+                                        self.expl_conv_p_systems.push(expl_conv_system);
+                                    } else {
+                                        // spawn star
+                                        let rot_clockwise = rng.gen_bool(0.5);
+                                        self.stars.push(Star::new(
+                                            Circle::new(self.mouse_pos, rng.gen_range(3.0, 7.0)),
+                                            Color::from_rgba(
+                                                rng.gen_range(0x58, 0xFF),
+                                                rng.gen_range(0x58, 0xFF),
+                                                rng.gen_range(0x58, 0xFF),
+                                                1.0,
+                                            ),
+                                            if rot_clockwise {
+                                                rng.gen_range(0.1, 0.3)
+                                            } else {
+                                                rng.gen_range(-0.3, -0.1)
+                                            },
+                                            rng.gen_range(0.0, 90.0),
+                                        ));
+                                    }
                                     self.s_boom.execute(|s| {
                                         s.set_volume(0.8);
                                         s.play()
@@ -1202,6 +1317,7 @@ impl State for GameState {
                             if self.state == 10 {
                                 let save_data = SaveData {
                                     planets: self.planets.clone(),
+                                    stars: self.stars.clone(),
                                     player: self.player.clone(),
                                     joining_particles: self.joining_particles.clone(),
                                 };
@@ -1216,8 +1332,10 @@ impl State for GameState {
                             let load_result = load::<SaveData>("OneAndAll_LD45", "slot0");
                             if let Ok(save_data) = load_result {
                                 self.planets = save_data.planets.clone();
+                                self.stars = save_data.stars.clone();
                                 self.player = save_data.player.clone();
                                 self.joining_particles = save_data.joining_particles.clone();
+                                self.expl_conv_p_systems.clear();
                                 self.move_to = self.player.pos;
                                 self.camera.pos =
                                     self.player.pos - Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0);
@@ -1354,6 +1472,7 @@ impl State for GameState {
                     self.joining_particles.particle_system.opacity = 0.0;
                     self.expl_conv_p_systems.clear();
                     self.planets.clear();
+                    self.stars.clear();
                     self.player.pos = Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0);
                     self.move_to = Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0);
                     self.camera.pos = Vector::new(0.0, 0.0);
@@ -1506,6 +1625,9 @@ impl State for GameState {
         for planet in &mut self.planets {
             planet.update(dt);
         }
+        for star in &mut self.stars {
+            star.update(dt);
+        }
 
         if let Some(sl) = &mut self.save_load_notification {
             match sl {
@@ -1535,6 +1657,20 @@ impl State for GameState {
                         })?;
                     }
                 }
+            }
+        }
+
+        if self.i_star_actual.is_none() {
+            if let Some(i_s) = &mut self.i_star {
+                let mut star: Option<Image> = None;
+                i_s.execute(|i| {
+                    star = Some(i.clone());
+                    Ok(())
+                })?;
+                self.i_star_actual = star;
+            }
+            if self.i_star_actual.is_some() {
+                self.i_star = None;
             }
         }
 
@@ -1619,6 +1755,12 @@ impl State for GameState {
         }
         for planet in &mut self.planets {
             planet.draw(window, Transform::IDENTITY);
+        }
+
+        if let Some(i) = &mut self.i_star_actual {
+            for star in &mut self.stars {
+                star.draw(i, window, Transform::IDENTITY);
+            }
         }
 
         if let Some(sl) = &mut self.save_load_notification {
