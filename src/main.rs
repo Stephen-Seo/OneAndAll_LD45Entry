@@ -147,7 +147,7 @@ impl Menu {
         Menu {
             items: vec![
                 item,
-                Menu::instant_text(150.0, 50.0, 55.0, true, "One And All"),
+                Menu::instant_text(70.0, 50.0, 55.0, true, "One And All - A Ludum Dare 45 Entry"),
                 Menu::instant_text(
                     25.0,
                     HEIGHT_F - 100.0,
