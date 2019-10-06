@@ -929,7 +929,7 @@ impl State for GameState {
                                     let mut expl_conv_system = ExplConvParticleSystem::new(
                                         1500.0,
                                         Circle::new(self.mouse_pos, 20.0),
-                                        Color::GREEN,
+                                        Color::from_rgba(0x99, 0xFF, 0x99, 1.0),
                                         1.0,
                                     );
                                     expl_conv_system.activate(30, 200.0);
