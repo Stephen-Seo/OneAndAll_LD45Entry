@@ -1,3 +1,14 @@
+# Disclaimer
+
+The hosted WASM versions of this game still work, but I am not entirely sure if
+the security issues with this game apply to the WASM versions. **USE AT YOUR OWN
+RISK**.
+
+This game was created in a manner such that it was tightly coupled with the
+`quicksilver` dependency. However, `quicksilver` is no longer (actively)
+maintained, and its old dependencies no longer allow this game to run properly
+(crashes on native, cannot serve WASM version).
+
 # Entry for LD45 - Start with Nothing
 
 This game is a Rust project using the quicksilver 2D game framework.
