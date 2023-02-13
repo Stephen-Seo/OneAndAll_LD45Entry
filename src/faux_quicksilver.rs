@@ -2,6 +2,8 @@ use std::ops::{Mul, Add, AddAssign, Sub};
 
 use serde::{Deserialize, Serialize};
 
+use crate::agnostic_interface::WindowInterface;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Color {
     pub r: u8,
@@ -230,6 +232,15 @@ pub struct View {
 }
 
 pub struct Window {
+    interface: Box<dyn WindowInterface>,
+}
+
+impl Window {
+    pub fn new() -> Self {
+        Self {
+            interface: todo!(),
+        }
+    }
 }
 
 pub struct Key {

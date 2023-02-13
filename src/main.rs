@@ -13,6 +13,7 @@
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 
+mod agnostic_interface;
 mod faux_quicksilver;
 use faux_quicksilver::{Color, Image, Rectangle, Circle, Vector, Transform, Window, Sound, Font, FontStyle, Event, Key, View};
 
@@ -1914,9 +1915,9 @@ impl GameState {
                 0xFF,
                 0xFF,
                 0xFF,
-                self.player_particles.opacity,
+                (self.player_particles.opacity * 255.0) as u8,
             )),
-            Transform::translate(-self.player.size.x / 2.0, -self.player.size.y / 2.0)
+            Transform::translate(-self.player.x / 2.0, -self.player.y / 2.0)
                 * Transform::rotate(self.player_r as f32),
             1,
         );
@@ -1948,9 +1949,10 @@ impl GameState {
                 | SaveLoadNotification::Load { text, timer } => {
                     if let Some(i) = text {
                         let mut c = Color::WHITE;
-                        c.a = (*timer / SL_NOTIF_TIME) as f32;
-                        let mut image_rect = i.area();
-                        image_rect.pos = self.camera.pos + Vector::new(20.0, 20.0);
+                        c.a = ((*timer / SL_NOTIF_TIME) as f32 * 255.0) as u8;
+                        let mut image_rect = i.area_rect();
+                        image_rect.x = self.camera.x + 20.0;
+                        image_rect.y = self.camera.y + 20.0;
                         window.draw(&image_rect, Blended(i, c));
                     }
                 }
