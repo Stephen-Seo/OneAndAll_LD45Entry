@@ -1,17 +1,20 @@
-use quicksilver::{
-    geom::{Circle, Rectangle, Transform, Vector},
-    graphics::{
-        Background::{Blended, Col, Img},
-        Color, Font, FontStyle, Image, View,
-    },
-    input::{ButtonState, Key},
-    lifecycle::{run, Asset, Event, Settings, State, Window},
-    saving::{load, save},
-    sound::Sound,
-    Result,
-};
+//use quicksilver::{
+//    geom::{Circle, Rectangle, Transform, Vector},
+//    graphics::{
+//        Background::{Blended, Col, Img},
+//        Color, Font, FontStyle, Image, View,
+//    },
+//    input::{ButtonState, Key},
+//    lifecycle::{run, Asset, Event, Settings, State, Window},
+//    saving::{load, save},
+//    sound::Sound,
+//    Result,
+//};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
+
+mod faux_quicksilver;
+use faux_quicksilver::{Color, Image, Rectangle, Circle, Vector, Transform, Window, Sound, Font, FontStyle, Event, Key, View};
 
 const WIDTH_F: f32 = 800.0;
 const HEIGHT_F: f32 = 600.0;
@@ -136,8 +139,8 @@ impl Menu {
                 text: "Start the Game",
                 text_image: None,
                 text_c: Color::WHITE,
-                h_c: Color::from_rgba(0x66, 0xFF, 0xFF, 1.0),
-                c: Color::from_rgba(0x33, 0xDD, 0xDD, 1.0),
+                h_c: Color::from_rgba(0x66, 0xFF, 0xFF, 255),
+                c: Color::from_rgba(0x33, 0xDD, 0xDD, 255),
             },
             is_hover: false,
             is_focus: false,
@@ -291,7 +294,7 @@ impl Menu {
                     "Hope",
                     Color::WHITE,
                     Color::BLACK,
-                    Color::from_rgba(0x33, 0x33, 0x33, 1.0),
+                    Color::from_rgba(0x33, 0x33, 0x33, 255),
                     false,
                 ),
                 Menu::button(
@@ -302,7 +305,7 @@ impl Menu {
                     "Miracles",
                     Color::WHITE,
                     Color::BLACK,
-                    Color::from_rgba(0x33, 0x33, 0x33, 1.0),
+                    Color::from_rgba(0x33, 0x33, 0x33, 255),
                     false,
                 ),
                 Menu::button(
@@ -313,7 +316,7 @@ impl Menu {
                     "Kindness",
                     Color::WHITE,
                     Color::BLACK,
-                    Color::from_rgba(0x33, 0x33, 0x33, 1.0),
+                    Color::from_rgba(0x33, 0x33, 0x33, 255),
                     false,
                 ),
                 Menu::button(
@@ -324,7 +327,7 @@ impl Menu {
                     "Determination",
                     Color::WHITE,
                     Color::BLACK,
-                    Color::from_rgba(0x33, 0x33, 0x33, 1.0),
+                    Color::from_rgba(0x33, 0x33, 0x33, 255),
                     false,
                 ),
             ],
@@ -607,12 +610,12 @@ impl ParticleSystem {
                 self.particles.swap_remove(i);
             } else {
                 if self.is_rect {
-                    self.particles[i].rect.pos.x += self.particles[i].velx * dt as f32;
-                    self.particles[i].rect.pos.y += self.particles[i].vely * dt as f32;
+                    self.particles[i].rect.x += self.particles[i].velx * dt as f32;
+                    self.particles[i].rect.y += self.particles[i].vely * dt as f32;
                     self.particles[i].r += self.particles[i].velr * dt as f32;
                 } else {
-                    self.particles[i].circle.pos.x += self.particles[i].velx * dt as f32;
-                    self.particles[i].circle.pos.y += self.particles[i].vely * dt as f32;
+                    self.particles[i].circle.x += self.particles[i].velx * dt as f32;
+                    self.particles[i].circle.y += self.particles[i].vely * dt as f32;
                 }
             }
         }
@@ -649,12 +652,12 @@ impl ParticleSystem {
             return;
         }
         for particle in &mut self.particles {
-            self.color.a = (1.0 - (particle.life_timer / particle.lifetime) as f32) * self.opacity;
+            self.color.a = ((1.0 - (particle.life_timer / particle.lifetime) as f32) * self.opacity * 255.0) as u8;
             if particle.is_rect {
-                let pre_transform = Transform::translate((
-                    -particle.rect.size.x / 2.0,
-                    -particle.rect.size.y / 2.0,
-                )) * Transform::rotate(particle.r);
+                let pre_transform = Transform::translate(
+                    -particle.rect.x / 2.0,
+                    -particle.rect.y / 2.0,
+                ) * Transform::rotate(particle.r);
                 window.draw_ex(
                     &particle.rect,
                     Col(self.color),
@@ -738,14 +741,14 @@ impl RotatingParticleSystem {
     fn update(&mut self, dt: f64) {
         if self.particle_system.is_rect {
             let saved_rect = self.particle_system.host_rect;
-            self.particle_system.host_rect.pos +=
-                Transform::rotate(self.r) * Vector::new(self.offset, 0.0);
+            self.particle_system.host_rect.pos_add_vec(
+                Transform::rotate(self.r) * Vector::new(self.offset, 0.0));
             self.particle_system.update(dt);
             self.particle_system.host_rect = saved_rect;
         } else {
             let saved_cir = self.particle_system.host_circle;
-            self.particle_system.host_circle.pos +=
-                Transform::rotate(self.r) * Vector::new(self.offset, 0.0);
+            self.particle_system.host_circle.pos_add_vec(
+                Transform::rotate(self.r) * Vector::new(self.offset, 0.0));
             self.particle_system.update(dt);
             self.particle_system.host_circle = saved_cir;
         }
@@ -761,22 +764,22 @@ impl RotatingParticleSystem {
         self.particle_system.draw(window, transform);
         if self.particle_system.is_rect {
             let mut moved_rect = self.particle_system.host_rect;
-            moved_rect.pos += Transform::rotate(self.r) * Vector::new(self.offset, 0.0);
+            moved_rect.pos_add_vec(Transform::rotate(self.r) * Vector::new(self.offset, 0.0));
             let mut solid_color = self.particle_system.color;
-            solid_color.a = self.particle_system.opacity;
+            solid_color.a = (self.particle_system.opacity * 255.0) as u8;
             window.draw_ex(
                 &moved_rect,
                 Col(solid_color),
                 transform
-                    * Transform::translate((-moved_rect.size.x / 2.0, -moved_rect.size.y / 2.0))
+                    * Transform::translate(-moved_rect.x / 2.0, -moved_rect.y / 2.0)
                     * Transform::rotate(self.r * 1.3),
                 1,
             );
         } else {
             let mut moved_cir = self.particle_system.host_circle;
-            moved_cir.pos += Transform::rotate(self.r) * Vector::new(self.offset, 0.0);
+            moved_cir.pos_add_vec(Transform::rotate(self.r) * Vector::new(self.offset, 0.0));
             let mut solid_color = self.particle_system.color;
-            solid_color.a = self.particle_system.opacity;
+            solid_color.a = (self.particle_system.opacity * 255.0) as u8;
             window.draw_ex(&moved_cir, Col(solid_color), transform, 1);
         }
     }
@@ -837,14 +840,16 @@ impl ExplConvParticleSystem {
             for particle in &mut self.particles {
                 let dir =
                     Transform::rotate(particle.r) * Vector::new(particle.offset * amount, 0.0);
-                particle.circle.pos = dir + self.host_circle.pos;
+                particle.circle.x = dir.x + self.host_circle.x;
+                particle.circle.y = dir.y + self.host_circle.y;
             }
         } else {
             let amount = 1.0 - interp_sq(((self.life_timer / self.lifetime) as f32 - 0.5) * 2.0);
             for particle in &mut self.particles {
                 let dir =
                     Transform::rotate(particle.r) * Vector::new(particle.offset * amount, 0.0);
-                particle.circle.pos = dir + self.host_circle.pos;
+                particle.circle.x = dir.x + self.host_circle.x;
+                particle.circle.y = dir.y + self.host_circle.y;
             }
         }
         return false;
@@ -855,7 +860,7 @@ impl ExplConvParticleSystem {
             return;
         }
         for particle in &mut self.particles {
-            self.color.a = ((self.life_timer / self.lifetime) as f32 / 2.0 + 0.5) * self.opacity;
+            self.color.a = (((self.life_timer / self.lifetime) as f32 / 2.0 + 0.5) * self.opacity * 255.0) as u8;
             window.draw_ex(&particle.circle, Col(self.color), transform, 1);
         }
     }
@@ -872,14 +877,14 @@ struct Planet {
 impl Planet {
     fn new(circle: Circle, color: Color) -> Self {
         let mut smaller_circle = circle;
-        smaller_circle.radius /= 4.0;
+        smaller_circle.r /= 4.0;
         let mut planet = Planet {
             circle,
             color,
             particle_system: ParticleSystem::new(
                 rand::thread_rng().gen_range(2000.0, 3800.0),
                 900.0,
-                Rectangle::new((0.0, 0.0), (1.0, 1.0)),
+                Rectangle::new(0.0, 0.0,1.0, 1.0),
                 circle,
                 false,
                 Vector::new(0.0, 0.0),
@@ -896,7 +901,7 @@ impl Planet {
             planet.moons.push(RotatingParticleSystem::new(
                 rand::thread_rng().gen_range(1000.0, 2600.0),
                 600.0,
-                Rectangle::new((0.0, 0.0), (1.0, 1.0)),
+                Rectangle::new(0.0, 0.0, 1.0, 1.0),
                 smaller_circle,
                 false,
                 Vector::new(0.0, 0.0),
@@ -917,10 +922,12 @@ impl Planet {
     }
 
     fn update(&mut self, dt: f64) {
-        self.particle_system.host_circle.pos = self.circle.pos;
+        self.particle_system.host_circle.x = self.circle.x;
+        self.particle_system.host_circle.y = self.circle.y;
         self.particle_system.update(dt);
         for moon in &mut self.moons {
-            moon.particle_system.host_circle.pos = self.circle.pos;
+            moon.particle_system.host_circle.x = self.circle.x;
+            moon.particle_system.host_circle.y = self.circle.y;
             moon.update(dt);
         }
     }
@@ -949,7 +956,7 @@ impl Star {
             particle_system: ParticleSystem::new(
                 rand::thread_rng().gen_range(80.0, 200.0),
                 850.0,
-                Rectangle::new((0.0, 0.0), (1.0, 1.0)),
+                Rectangle::new(0.0, 0.0, 1.0, 1.0),
                 circle,
                 false,
                 Vector::new(0.0, 0.0),
@@ -961,14 +968,14 @@ impl Star {
             r,
         };
 
-        if star.color.r < 0.75 {
-            star.color.r = 0.75;
+        if star.color.r < (0.75 * 255.0) as u8 {
+            star.color.r = (0.75 * 255.0) as u8;
         }
-        if star.color.g < 0.75 {
-            star.color.g = 0.75;
+        if star.color.g < (0.75 * 255.0) as u8 {
+            star.color.g = (0.75 * 255.0) as u8;
         }
-        if star.color.b < 0.75 {
-            star.color.b = 0.75;
+        if star.color.b < (0.75 * 255.0) as u8 {
+            star.color.b = (0.75 * 255.0) as u8;
         }
         star.particle_system
             .force_spawn(rand::thread_rng().gen_range(20, 45));
@@ -983,8 +990,9 @@ impl Star {
 
     fn draw(&mut self, image: &mut Image, window: &mut Window, transform: Transform) {
         self.particle_system.draw(window, transform);
-        let mut image_rect = image.area();
-        image_rect.pos = self.particle_system.host_circle.pos - image_rect.size / 2.0;
+        let mut image_rect = image.area_rect();
+        image_rect.x = self.particle_system.host_circle.x - image_rect.w / 2.0;
+        image_rect.y = self.particle_system.host_circle.y - image_rect.h / 2.0;
         window.draw_ex(
             &image_rect,
             Blended(image, self.color),
@@ -1075,8 +1083,9 @@ impl Fish {
         transform: Transform,
     ) {
         let anim_angle = ((self.anim_timer / self.anim_time) * std::f64::consts::PI * 2.0).sin();
-        let mut body_rect = fish_body.area();
-        body_rect.pos = self.pos - body_rect.size / 2.0;
+        let mut body_rect = fish_body.area_rect();
+        body_rect.x = self.pos.x - body_rect.w / 2.0;
+        body_rect.y = self.pos.y - body_rect.h / 2.0;
         let body_tr =
             Transform::rotate(anim_angle as f32 * 30.0) * Transform::rotate(self.r + 180.0);
         window.draw_ex(
@@ -1085,16 +1094,17 @@ impl Fish {
             transform * body_tr,
             1,
         );
-        let mut tail_rect = fish_tail.area();
-        tail_rect.pos = self.pos - tail_rect.size / 2.0;
+        let mut tail_rect = fish_tail.area_rect();
+        tail_rect.x = self.pos.x - tail_rect.w / 2.0;
+        tail_rect.y = self.pos.y - tail_rect.h / 2.0;
         let anim_angle = ((self.anim_timer / self.anim_time) * std::f64::consts::PI * 2.0
             - std::f64::consts::PI / 3.0)
             .sin();
         let tail_tr = body_tr
-            * Transform::translate((body_rect.size.x / 1.5, 0.0))
-            * Transform::translate((-tail_rect.size.x / 2.0, 0.0))
+            * Transform::translate(body_rect.x / 1.5, 0.0)
+            * Transform::translate(-tail_rect.x / 2.0, 0.0)
             * Transform::rotate(-anim_angle as f32 * 45.0)
-            * Transform::translate((tail_rect.size.x / 2.0, 0.0));
+            * Transform::translate(tail_rect.x / 2.0, 0.0);
         window.draw_ex(
             &tail_rect,
             Blended(fish_tail, self.color),
@@ -1119,17 +1129,17 @@ enum SaveLoadNotification {
 }
 
 struct GameState {
-    s_boom: Asset<Sound>,
-    s_get: Asset<Sound>,
-    s_power_up: Asset<Sound>,
-    s_tap: Asset<Sound>,
-    s_speak_m: Asset<Sound>,
-    s_speak_f: Asset<Sound>,
-    font: Asset<Font>,
-    music2: Asset<Sound>,
-    i_star: Option<Asset<Image>>,
+    s_boom: Sound,
+    s_get: Sound,
+    s_power_up: Sound,
+    s_tap: Sound,
+    s_speak_m: Sound,
+    s_speak_f: Sound,
+    font: Font,
+    music2: Sound,
+    i_star: Option<Image>,
     i_star_actual: Option<Image>,
-    i_fish: Asset<Image>,
+    i_fish: Image,
     i_fish_body: Option<Image>,
     i_fish_tail: Option<Image>,
     music_on: bool,
@@ -1159,20 +1169,20 @@ struct GameState {
     save_load_notification: Option<SaveLoadNotification>,
 }
 
-impl State for GameState {
-    fn new() -> Result<Self> {
+impl GameState {
+    fn new() -> Result<Self, String> {
         Ok(Self {
-            s_boom: Asset::new(Sound::load("boom.mp3")),
-            s_get: Asset::new(Sound::load("get.mp3")),
-            s_power_up: Asset::new(Sound::load("power_up.mp3")),
-            s_tap: Asset::new(Sound::load("tap.mp3")),
-            s_speak_m: Asset::new(Sound::load("speak_m.mp3")),
-            s_speak_f: Asset::new(Sound::load("speak_f.mp3")),
-            font: Asset::new(Font::load("ClearSans-Regular.ttf")),
-            music2: Asset::new(Sound::load("music2.mp3")),
-            i_star: Some(Asset::new(Image::load("star.png"))),
+            s_boom: Sound::load("boom.mp3"),
+            s_get: Sound::load("get.mp3"),
+            s_power_up: Sound::load("power_up.mp3"),
+            s_tap: Sound::load("tap.mp3"),
+            s_speak_m: Sound::load("speak_m.mp3"),
+            s_speak_f: Sound::load("speak_f.mp3"),
+            font: Font::load("ClearSans-Regular.ttf"),
+            music2: Sound::load("music2.mp3"),
+            i_star: Some(Image::load("star.png")),
             i_star_actual: None,
-            i_fish: Asset::new(Image::load("fish.png")),
+            i_fish: Image::load("fish.png"),
             i_fish_body: None,
             i_fish_tail: None,
             music_on: false,
@@ -1183,13 +1193,13 @@ impl State for GameState {
             selection_mode: true,
             current_item: None,
             current_finished: true,
-            player: Rectangle::new((400.0, 300.0), (32.0, 32.0)),
+            player: Rectangle::new(400.0, 300.0, 32.0, 32.0),
             player_r: 0.0,
             player_particles: ParticleSystem::new(
                 PP_GEN_RATE,
                 1000.0,
-                Rectangle::new((400.0, 300.0), (32.0, 32.0)),
-                Circle::new((100.0, 100.0), 32.0),
+                Rectangle::new(400.0, 300.0, 32.0, 32.0),
+                Circle::new(100.0, 100.0, 32.0),
                 true,
                 Vector::new(0.0, 0.0),
                 Color::WHITE,
@@ -1199,8 +1209,8 @@ impl State for GameState {
             joining_particles: RotatingParticleSystem::new(
                 PP_GEN_RATE,
                 1000.0,
-                Rectangle::new((400.0, 300.0), (16.0, 16.0)),
-                Circle::new((100.0, 100.0), 32.0),
+                Rectangle::new(400.0, 300.0, 16.0, 16.0),
+                Circle::new(100.0, 100.0, 32.0),
                 true,
                 Vector::new(0.0, 0.0),
                 Color::GREEN,
@@ -1220,13 +1230,13 @@ impl State for GameState {
             planets: Vec::new(),
             stars: Vec::new(),
             fishes: Vec::new(),
-            camera: Rectangle::new((0.0, 0.0), (WIDTH_F, HEIGHT_F)),
+            camera: Rectangle::new(0.0, 0.0, WIDTH_F, HEIGHT_F),
             move_to: Vector::new(400.0, 300.0),
             save_load_notification: None,
         })
     }
 
-    fn event(&mut self, event: &Event, window: &mut Window) -> Result<()> {
+    fn event(&mut self, event: &Event, window: &mut Window) -> Result<(), String> {
         match event {
             Event::MouseMoved(v) => {
                 self.mouse_pos = *v;
@@ -1259,8 +1269,8 @@ impl State for GameState {
                                 if self.state == 8 {
                                     let mut expl_conv_system = ExplConvParticleSystem::new(
                                         1500.0,
-                                        Circle::new(self.mouse_pos, 20.0),
-                                        Color::from_rgba(0x99, 0xFF, 0x99, 1.0),
+                                        Circle::new(self.mouse_pos.x, self.mouse_pos.y, 20.0),
+                                        Color::from_rgba(0x99, 0xFF, 0x99, 255),
                                         1.0,
                                     );
                                     expl_conv_system.activate(30, 200.0);
@@ -1278,12 +1288,12 @@ impl State for GameState {
                                         // spawn planet
                                         let mut expl_conv_system = ExplConvParticleSystem::new(
                                             rng.gen_range(1200.0, 1600.0),
-                                            Circle::new(self.mouse_pos, rng.gen_range(15.0, 25.0)),
+                                            Circle::new(self.mouse_pos.x,self.mouse_pos.y, rng.gen_range(15.0, 25.0)),
                                             Color::from_rgba(
                                                 rng.gen_range(0x44, 0xFF),
                                                 rng.gen_range(0x44, 0xFF),
                                                 rng.gen_range(0x44, 0xFF),
-                                                1.0,
+                                                255,
                                             ),
                                             1.0,
                                         );
@@ -1296,12 +1306,12 @@ impl State for GameState {
                                         // spawn star
                                         let rot_clockwise = rng.gen_bool(0.5);
                                         self.stars.push(Star::new(
-                                            Circle::new(self.mouse_pos, rng.gen_range(3.0, 7.0)),
+                                            Circle::new(self.mouse_pos.x, self.mouse_pos.y, rng.gen_range(3.0, 7.0)),
                                             Color::from_rgba(
                                                 rng.gen_range(0x58, 0xFF),
                                                 rng.gen_range(0x58, 0xFF),
                                                 rng.gen_range(0x58, 0xFF),
-                                                1.0,
+                                                255,
                                             ),
                                             if rot_clockwise {
                                                 rng.gen_range(0.1, 0.3)
@@ -1320,7 +1330,7 @@ impl State for GameState {
                                                     rng.gen_range(0x44, 0xFF),
                                                     rng.gen_range(0x44, 0xFF),
                                                     rng.gen_range(0x44, 0xFF),
-                                                    1.0,
+                                                    255,
                                                 ),
                                             ));
                                         }
@@ -1347,25 +1357,25 @@ impl State for GameState {
                                             self.state = 3;
                                             self.state_dirty = true;
                                             self.joining_particles.particle_system.color =
-                                                Color::from_rgba(0xAA, 0xCC, 0xFF, 1.0);
+                                                Color::from_rgba(0xAA, 0xCC, 0xFF, 255);
                                         } else if idx == 6 {
                                             // miracles
                                             self.state = 4;
                                             self.state_dirty = true;
                                             self.joining_particles.particle_system.color =
-                                                Color::from_rgba(0xFF, 0xFF, 0xAA, 1.0);
+                                                Color::from_rgba(0xFF, 0xFF, 0xAA, 255);
                                         } else if idx == 7 {
                                             // kindness
                                             self.state = 5;
                                             self.state_dirty = true;
                                             self.joining_particles.particle_system.color =
-                                                Color::from_rgba(0xBB, 0xFF, 0xBB, 1.0);
+                                                Color::from_rgba(0xBB, 0xFF, 0xBB, 255);
                                         } else {
                                             // determination
                                             self.state = 6;
                                             self.state_dirty = true;
                                             self.joining_particles.particle_system.color =
-                                                Color::from_rgba(0xFF, 0xAA, 0xAA, 1.0);
+                                                Color::from_rgba(0xFF, 0xAA, 0xAA, 255);
                                         }
                                         self.s_get.execute(|s| {
                                             s.set_volume(0.7);
@@ -1471,9 +1481,9 @@ impl State for GameState {
                                 self.player = save_data.player;
                                 self.joining_particles = save_data.joining_particles;
                                 self.expl_conv_p_systems.clear();
-                                self.move_to = self.player.pos;
-                                self.camera.pos =
-                                    self.player.pos - Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0);
+                                self.move_to = Vector{ x: self.player.x, y: self.player.y};
+                                self.camera.x = self.player.x - WIDTH_F / 2.0;
+                                self.camera.y = self.player.y - HEIGHT_F / 2.0;
                                 self.dbl_click_timeout = None;
                                 self.click_time = None;
                                 self.click_release_time = DOUBLE_CLICK_TIME;
@@ -1501,7 +1511,7 @@ impl State for GameState {
         Ok(())
     }
 
-    fn update(&mut self, window: &mut Window) -> Result<()> {
+    fn update(&mut self, window: &mut Window) -> Result<(), String> {
         let dt = window.update_rate();
 
         self.click_release_time += dt;
@@ -1519,12 +1529,14 @@ impl State for GameState {
             }
         }
 
-        self.player.pos += (self.move_to - self.player.pos) / 20.0;
-        self.player_particles.host_rect.pos = self.player.pos;
-        self.joining_particles.particle_system.host_rect.pos +=
-            (self.player.pos - self.joining_particles.particle_system.host_rect.pos) / 30.0;
-        self.camera.pos +=
-            (self.player.pos - Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0) - self.camera.pos) / 40.0;
+        self.player.x += (self.move_to.x - self.player.x) / 20.0;
+        self.player.y += (self.move_to.y - self.player.y) / 20.0;
+        self.player_particles.host_rect.x = self.player.x;
+        self.player_particles.host_rect.y = self.player.y;
+        self.joining_particles.particle_system.host_rect.x += (self.player.x - self.joining_particles.particle_system.host_rect.x) / 30.0;
+        self.joining_particles.particle_system.host_rect.y += (self.player.y - self.joining_particles.particle_system.host_rect.y) / 30.0;
+        self.camera.x += (self.player.x - WIDTH_F / 2.0 - self.camera.x) / 40.0;
+        self.camera.y += (self.player.y - HEIGHT_F / 2.0 - self.camera.y) / 40.0;
         window.set_view(View::new(self.camera));
 
         self.player_r += dt / 10.0;
@@ -1609,9 +1621,11 @@ impl State for GameState {
                     self.planets.clear();
                     self.stars.clear();
                     self.fishes.clear();
-                    self.player.pos = Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0);
+                    self.player.x = WIDTH_F / 2.0;
+                    self.player.y = HEIGHT_F / 2.0;
                     self.move_to = Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0);
-                    self.camera.pos = Vector::new(0.0, 0.0);
+                    self.camera.x = 0.0;
+                    self.camera.y = 0.0;
                     self.click_time = None;
                 }
             }
@@ -1813,7 +1827,7 @@ impl State for GameState {
         if self.i_fish_body.is_none() {
             let mut body: Option<Image> = None;
             self.i_fish.execute(|i| {
-                body = Some(i.subimage(Rectangle::new((0.0, 0.0), (32.0, 16.0))));
+                body = Some(i.subimage(Rectangle::new(0.0, 0.0, 32.0, 16.0)));
                 Ok(())
             })?;
             self.i_fish_body = body;
@@ -1821,7 +1835,7 @@ impl State for GameState {
         if self.i_fish_tail.is_none() {
             let mut tail: Option<Image> = None;
             self.i_fish.execute(|i| {
-                tail = Some(i.subimage(Rectangle::new((32.0, 0.0), (16.0, 16.0))));
+                tail = Some(i.subimage(Rectangle::new(32.0, 0.0, 16.0, 16.0)));
                 Ok(())
             })?;
             self.i_fish_tail = tail;
@@ -1834,14 +1848,14 @@ impl State for GameState {
         Ok(())
     }
 
-    fn draw(&mut self, window: &mut Window) -> Result<()> {
+    fn draw(&mut self, window: &mut Window) -> Result<(), String> {
         window.clear(Color::BLACK)?;
         let mut rect = Rectangle::default();
         for mi in &mut self.menu.items {
-            rect.pos.x = mi.x;
-            rect.pos.y = mi.y;
-            rect.size.x = mi.w;
-            rect.size.y = mi.h;
+            rect.x = mi.x;
+            rect.y = mi.y;
+            rect.w = mi.w;
+            rect.h = mi.h;
             match &mut mi.item_type {
                 MenuItemType::Button {
                     text,
@@ -1856,9 +1870,9 @@ impl State for GameState {
                         window.draw(&rect, Col(*c));
                     }
                     if let Some(i) = text_image {
-                        let mut image_rect = i.area();
-                        image_rect.pos.x = mi.x + (mi.w - image_rect.size.x) / 2.0;
-                        image_rect.pos.y = mi.y + (mi.h - image_rect.size.y) / 2.0;
+                        let mut image_rect = i.area_rect();
+                        image_rect.x = mi.x + (mi.w - image_rect.w) / 2.0;
+                        image_rect.y = mi.y + (mi.h - image_rect.h) / 2.0;
                         window.draw(&image_rect, Img(i));
                     }
                 }
@@ -1902,7 +1916,7 @@ impl State for GameState {
                 0xFF,
                 self.player_particles.opacity,
             )),
-            Transform::translate((-self.player.size.x / 2.0, -self.player.size.y / 2.0))
+            Transform::translate(-self.player.size.x / 2.0, -self.player.size.y / 2.0)
                 * Transform::rotate(self.player_r as f32),
             1,
         );
