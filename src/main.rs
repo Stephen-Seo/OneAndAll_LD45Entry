@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 mod agnostic_interface;
 mod faux_quicksilver;
-use faux_quicksilver::{Color, Image, Rectangle, Circle, Vector, Transform, Window, Sound, Font, FontStyle, Event, Key, View};
+use faux_quicksilver::{Circle, Color, Event, Key, Rectangle, Transform, Vector, View, Window};
 
 const WIDTH_F: f32 = 800.0;
 const HEIGHT_F: f32 = 600.0;
@@ -54,14 +54,14 @@ fn interp_sq(x: f32) -> f32 {
 enum MenuItemType {
     Button {
         text: &'static str,
-        text_image: Option<Image>,
+        text_image: Option<String>,
         text_c: Color,
         h_c: Color,
         c: Color,
     },
     AppearingText {
         text: &'static str,
-        text_image: Option<Image>,
+        text_image: Option<String>,
         current_text: String,
         text_size: f32,
         text_c: Color,
@@ -69,7 +69,7 @@ enum MenuItemType {
     },
     InstantText {
         text: &'static str,
-        text_image: Option<Image>,
+        text_image: Option<String>,
         text_size: f32,
         text_color: Color,
     },
@@ -653,20 +653,22 @@ impl ParticleSystem {
             return;
         }
         for particle in &mut self.particles {
-            self.color.a = ((1.0 - (particle.life_timer / particle.lifetime) as f32) * self.opacity * 255.0) as u8;
+            self.color.a = ((1.0 - (particle.life_timer / particle.lifetime) as f32)
+                * self.opacity
+                * 255.0) as u8;
             if particle.is_rect {
-                let pre_transform = Transform::translate(
-                    -particle.rect.x / 2.0,
-                    -particle.rect.y / 2.0,
-                ) * Transform::rotate(particle.r);
-                window.draw_ex(
-                    &particle.rect,
-                    Col(self.color),
-                    transform * pre_transform,
-                    1,
-                );
+                let pre_transform =
+                    Transform::translate(-particle.rect.x / 2.0, -particle.rect.y / 2.0)
+                        * Transform::rotate(particle.r);
+                window
+                    .get_gi_mut()
+                    .draw_rect_transform(particle.rect, self.color, transform * pre_transform)
+                    .ok();
             } else {
-                window.draw_ex(&particle.circle, Col(self.color), transform, 1);
+                window
+                    .get_gi_mut()
+                    .draw_circle_transform(particle.circle, self.color, transform)
+                    .ok();
             }
         }
     }
@@ -742,14 +744,16 @@ impl RotatingParticleSystem {
     fn update(&mut self, dt: f64) {
         if self.particle_system.is_rect {
             let saved_rect = self.particle_system.host_rect;
-            self.particle_system.host_rect.pos_add_vec(
-                Transform::rotate(self.r) * Vector::new(self.offset, 0.0));
+            self.particle_system
+                .host_rect
+                .pos_add_vec(Transform::rotate(self.r) * Vector::new(self.offset, 0.0));
             self.particle_system.update(dt);
             self.particle_system.host_rect = saved_rect;
         } else {
             let saved_cir = self.particle_system.host_circle;
-            self.particle_system.host_circle.pos_add_vec(
-                Transform::rotate(self.r) * Vector::new(self.offset, 0.0));
+            self.particle_system
+                .host_circle
+                .pos_add_vec(Transform::rotate(self.r) * Vector::new(self.offset, 0.0));
             self.particle_system.update(dt);
             self.particle_system.host_circle = saved_cir;
         }
@@ -768,20 +772,25 @@ impl RotatingParticleSystem {
             moved_rect.pos_add_vec(Transform::rotate(self.r) * Vector::new(self.offset, 0.0));
             let mut solid_color = self.particle_system.color;
             solid_color.a = (self.particle_system.opacity * 255.0) as u8;
-            window.draw_ex(
-                &moved_rect,
-                Col(solid_color),
-                transform
-                    * Transform::translate(-moved_rect.x / 2.0, -moved_rect.y / 2.0)
-                    * Transform::rotate(self.r * 1.3),
-                1,
-            );
+            window
+                .get_gi_mut()
+                .draw_rect_transform(
+                    moved_rect,
+                    solid_color,
+                    transform
+                        * Transform::translate(-moved_rect.x / 2.0, -moved_rect.y / 2.0)
+                        * Transform::rotate(self.r * 1.3),
+                )
+                .ok();
         } else {
             let mut moved_cir = self.particle_system.host_circle;
             moved_cir.pos_add_vec(Transform::rotate(self.r) * Vector::new(self.offset, 0.0));
             let mut solid_color = self.particle_system.color;
             solid_color.a = (self.particle_system.opacity * 255.0) as u8;
-            window.draw_ex(&moved_cir, Col(solid_color), transform, 1);
+            window
+                .get_gi_mut()
+                .draw_circle_transform(moved_cir, solid_color, transform)
+                .ok();
         }
     }
 }
@@ -861,7 +870,9 @@ impl ExplConvParticleSystem {
             return;
         }
         for particle in &mut self.particles {
-            self.color.a = (((self.life_timer / self.lifetime) as f32 / 2.0 + 0.5) * self.opacity * 255.0) as u8;
+            self.color.a = (((self.life_timer / self.lifetime) as f32 / 2.0 + 0.5)
+                * self.opacity
+                * 255.0) as u8;
             window.draw_ex(&particle.circle, Col(self.color), transform, 1);
         }
     }
@@ -885,7 +896,7 @@ impl Planet {
             particle_system: ParticleSystem::new(
                 rand::thread_rng().gen_range(2000.0, 3800.0),
                 900.0,
-                Rectangle::new(0.0, 0.0,1.0, 1.0),
+                Rectangle::new(0.0, 0.0, 1.0, 1.0),
                 circle,
                 false,
                 Vector::new(0.0, 0.0),
@@ -989,7 +1000,7 @@ impl Star {
         self.r += self.velr * dt as f32;
     }
 
-    fn draw(&mut self, image: &mut Image, window: &mut Window, transform: Transform) {
+    fn draw(&mut self, image: &mut String, window: &mut Window, transform: Transform) {
         self.particle_system.draw(window, transform);
         let mut image_rect = image.area_rect();
         image_rect.x = self.particle_system.host_circle.x - image_rect.w / 2.0;
@@ -1078,8 +1089,8 @@ impl Fish {
 
     fn draw(
         &mut self,
-        fish_body: &Image,
-        fish_tail: &Image,
+        fish_body: &String,
+        fish_tail: &String,
         window: &mut Window,
         transform: Transform,
     ) {
@@ -1125,8 +1136,8 @@ struct SaveData {
 }
 
 enum SaveLoadNotification {
-    Save { text: Option<Image>, timer: f64 },
-    Load { text: Option<Image>, timer: f64 },
+    Save { text: Option<String>, timer: f64 },
+    Load { text: Option<String>, timer: f64 },
 }
 
 struct GameState {
@@ -1138,11 +1149,11 @@ struct GameState {
     s_speak_f: Sound,
     font: Font,
     music2: Sound,
-    i_star: Option<Image>,
-    i_star_actual: Option<Image>,
-    i_fish: Image,
-    i_fish_body: Option<Image>,
-    i_fish_tail: Option<Image>,
+    i_star: Option<String>,
+    i_star_actual: Option<String>,
+    i_fish: String,
+    i_fish_body: Option<String>,
+    i_fish_tail: Option<String>,
     music_on: bool,
     music_timer: f64,
     menu: Menu,
@@ -1289,7 +1300,11 @@ impl GameState {
                                         // spawn planet
                                         let mut expl_conv_system = ExplConvParticleSystem::new(
                                             rng.gen_range(1200.0, 1600.0),
-                                            Circle::new(self.mouse_pos.x,self.mouse_pos.y, rng.gen_range(15.0, 25.0)),
+                                            Circle::new(
+                                                self.mouse_pos.x,
+                                                self.mouse_pos.y,
+                                                rng.gen_range(15.0, 25.0),
+                                            ),
                                             Color::from_rgba(
                                                 rng.gen_range(0x44, 0xFF),
                                                 rng.gen_range(0x44, 0xFF),
@@ -1307,7 +1322,11 @@ impl GameState {
                                         // spawn star
                                         let rot_clockwise = rng.gen_bool(0.5);
                                         self.stars.push(Star::new(
-                                            Circle::new(self.mouse_pos.x, self.mouse_pos.y, rng.gen_range(3.0, 7.0)),
+                                            Circle::new(
+                                                self.mouse_pos.x,
+                                                self.mouse_pos.y,
+                                                rng.gen_range(3.0, 7.0),
+                                            ),
                                             Color::from_rgba(
                                                 rng.gen_range(0x58, 0xFF),
                                                 rng.gen_range(0x58, 0xFF),
@@ -1482,7 +1501,10 @@ impl GameState {
                                 self.player = save_data.player;
                                 self.joining_particles = save_data.joining_particles;
                                 self.expl_conv_p_systems.clear();
-                                self.move_to = Vector{ x: self.player.x, y: self.player.y};
+                                self.move_to = Vector {
+                                    x: self.player.x,
+                                    y: self.player.y,
+                                };
                                 self.camera.x = self.player.x - WIDTH_F / 2.0;
                                 self.camera.y = self.player.y - HEIGHT_F / 2.0;
                                 self.dbl_click_timeout = None;
@@ -1534,8 +1556,10 @@ impl GameState {
         self.player.y += (self.move_to.y - self.player.y) / 20.0;
         self.player_particles.host_rect.x = self.player.x;
         self.player_particles.host_rect.y = self.player.y;
-        self.joining_particles.particle_system.host_rect.x += (self.player.x - self.joining_particles.particle_system.host_rect.x) / 30.0;
-        self.joining_particles.particle_system.host_rect.y += (self.player.y - self.joining_particles.particle_system.host_rect.y) / 30.0;
+        self.joining_particles.particle_system.host_rect.x +=
+            (self.player.x - self.joining_particles.particle_system.host_rect.x) / 30.0;
+        self.joining_particles.particle_system.host_rect.y +=
+            (self.player.y - self.joining_particles.particle_system.host_rect.y) / 30.0;
         self.camera.x += (self.player.x - WIDTH_F / 2.0 - self.camera.x) / 40.0;
         self.camera.y += (self.player.y - HEIGHT_F / 2.0 - self.camera.y) / 40.0;
         window.set_view(View::new(self.camera));
@@ -1850,7 +1874,7 @@ impl GameState {
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<(), String> {
-        window.clear(Color::BLACK)?;
+        window.get_gi_mut().clear_window(Color::BLACK)?;
         let mut rect = Rectangle::default();
         for mi in &mut self.menu.items {
             rect.x = mi.x;
@@ -1866,15 +1890,16 @@ impl GameState {
                     c,
                 } => {
                     if mi.is_hover {
-                        window.draw(&rect, Col(*h_c));
+                        window.get_gi_mut().draw_rect(rect, *h_c)?;
                     } else {
-                        window.draw(&rect, Col(*c));
+                        window.get_gi_mut().draw_rect(rect, *c)?;
                     }
                     if let Some(i) = text_image {
-                        let mut image_rect = i.area_rect();
+                        let image = window.get_image_mut(&i)?;
+                        let mut image_rect = image.get_wh_rect();
                         image_rect.x = mi.x + (mi.w - image_rect.w) / 2.0;
                         image_rect.y = mi.y + (mi.h - image_rect.h) / 2.0;
-                        window.draw(&image_rect, Img(i));
+                        image.draw(image_rect.x, image_rect.y)?;
                     }
                 }
                 MenuItemType::AppearingText {
@@ -1886,10 +1911,8 @@ impl GameState {
                     timer,
                 } => {
                     if let Some(i) = text_image {
-                        let mut image_rect = i.area();
-                        image_rect.pos.x = mi.x;
-                        image_rect.pos.y = mi.y;
-                        window.draw(&image_rect, Img(i));
+                        let image = window.get_image_mut(&i)?;
+                        image.draw(mi.x, mi.y)?;
                     }
                 }
                 MenuItemType::InstantText {
@@ -1899,28 +1922,21 @@ impl GameState {
                     text_color,
                 } => {
                     if let Some(i) = text_image {
-                        let mut image_rect = i.area();
-                        image_rect.pos.x = mi.x;
-                        image_rect.pos.y = mi.y;
-                        window.draw(&image_rect, Img(i));
+                        let image = window.get_image_mut(&i)?;
+                        let mut image_rect = image.get_wh_rect();
+                        image.draw(mi.x, mi.y)?;
                     }
                 }
                 MenuItemType::Pause { timer, length } => (),
             }
         }
         self.player_particles.draw(window, Transform::IDENTITY);
-        window.draw_ex(
-            &self.player,
-            Col(Color::from_rgba(
-                0xFF,
-                0xFF,
-                0xFF,
-                (self.player_particles.opacity * 255.0) as u8,
-            )),
+        window.get_gi_mut().draw_rect_transform(
+            self.player,
+            Color::from_rgba(255, 255, 255, (self.player_particles.opacity * 255.0) as u8),
             Transform::translate(-self.player.x / 2.0, -self.player.y / 2.0)
                 * Transform::rotate(self.player_r as f32),
-            1,
-        );
+        )?;
         self.joining_particles.draw(window, Transform::IDENTITY);
         for expl_conv_ps in &mut self.expl_conv_p_systems {
             expl_conv_ps.draw(window, Transform::IDENTITY);
@@ -1943,30 +1959,32 @@ impl GameState {
             }
         }
 
-        if let Some(sl) = &mut self.save_load_notification {
-            match sl {
-                SaveLoadNotification::Save { text, timer }
-                | SaveLoadNotification::Load { text, timer } => {
-                    if let Some(i) = text {
-                        let mut c = Color::WHITE;
-                        c.a = ((*timer / SL_NOTIF_TIME) as f32 * 255.0) as u8;
-                        let mut image_rect = i.area_rect();
-                        image_rect.x = self.camera.x + 20.0;
-                        image_rect.y = self.camera.y + 20.0;
-                        window.draw(&image_rect, Blended(i, c));
-                    }
-                }
-            }
-        }
+        // TODO
+        //if let Some(sl) = &mut self.save_load_notification {
+        //    match sl {
+        //        SaveLoadNotification::Save { text, timer }
+        //        | SaveLoadNotification::Load { text, timer } => {
+        //            if let Some(i) = text {
+        //                let mut c = Color::WHITE;
+        //                c.a = ((*timer / SL_NOTIF_TIME) as f32 * 255.0) as u8;
+        //                let mut image_rect = i.area_rect();
+        //                image_rect.x = self.camera.x + 20.0;
+        //                image_rect.y = self.camera.y + 20.0;
+        //                window.draw(&image_rect, Blended(i, c));
+        //            }
+        //        }
+        //    }
+        //}
 
         Ok(())
     }
 }
 
 fn main() {
-    run::<GameState>(
-        "One And All - a Ludum Dare 45 compo entry",
-        Vector::new(800, 600),
-        Settings::default(),
-    );
+    // TODO
+    //run::<GameState>(
+    //    "One And All - a Ludum Dare 45 compo entry",
+    //    Vector::new(800, 600),
+    //    Settings::default(),
+    //);
 }

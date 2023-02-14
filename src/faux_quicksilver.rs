@@ -1,8 +1,12 @@
-use std::ops::{Mul, Add, AddAssign, Sub};
+use std::collections::HashMap;
+use std::ops::{Add, AddAssign, Mul, Sub};
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use crate::agnostic_interface::WindowInterface;
+use crate::agnostic_interface::{
+    FontInterface, GameInterface, ImageInterface, MusicInterface, SoundInterface,
+};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Color {
@@ -35,12 +39,7 @@ impl Color {
     };
 
     pub fn from_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
-        Self {
-            r,
-            g,
-            b,
-            a,
-        }
+        Self { r, g, b, a }
     }
 }
 
@@ -54,12 +53,7 @@ pub struct Rectangle {
 
 impl Rectangle {
     pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
-        Self {
-            x,
-            y,
-            w,
-            h,
-        }
+        Self { x, y, w, h }
     }
 
     pub fn pos_add_vec(&mut self, v: Vector) {
@@ -88,11 +82,7 @@ pub struct Circle {
 
 impl Circle {
     pub fn new(x: f32, y: f32, r: f32) -> Self {
-        Self {
-            x,
-            y,
-            r,
-        }
+        Self { x, y, r }
     }
 
     pub fn pos_add_vec(&mut self, v: Vector) {
@@ -149,26 +139,23 @@ impl Mul<f32> for Vector {
 
 impl Vector {
     pub fn new(x: f32, y: f32) -> Self {
-        Self {
-            x,
-            y,
-        }
+        Self { x, y }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Transform {
     pub mat: [f32; 9],
+    translate: Vector,
+    rotate: f32,
 }
 
 impl Default for Transform {
     fn default() -> Self {
         Self {
-            mat: [
-                1.0, 0.0, 0.0,
-                0.0, 1.0, 0.0,
-                0.0, 0.0, 1.0,
-            ],
+            mat: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+            translate: Vector { x: 0.0, y: 0.0 },
+            rotate: 0.0,
         }
     }
 }
@@ -199,7 +186,9 @@ impl Mul<Transform> for Transform {
                 self.mat[6] * rhs.mat[0] + self.mat[7] * rhs.mat[3] + self.mat[8] * rhs.mat[6],
                 self.mat[6] * rhs.mat[1] + self.mat[7] * rhs.mat[4] + self.mat[8] * rhs.mat[7],
                 self.mat[6] * rhs.mat[2] + self.mat[7] * rhs.mat[5] + self.mat[8] * rhs.mat[8],
-            ]
+            ],
+            translate: self.translate + rhs.translate,
+            rotate: self.rotate + rhs.rotate,
         }
     }
 }
@@ -210,66 +199,148 @@ impl Transform {
     pub fn rotate(rot: f32) -> Self {
         Self {
             mat: [
-                rot.cos(),  rot.sin(), 0.0,
-                -rot.sin(), rot.cos(), 0.0,
-                0.0,        0.0,       1.0,
-            ]
+                rot.cos(),
+                rot.sin(),
+                0.0,
+                -rot.sin(),
+                rot.cos(),
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+            ],
+            rotate: rot,
+            ..Default::default()
         }
     }
 
     pub fn translate(x: f32, y: f32) -> Self {
         Self {
-            mat: [
-                1.0, 0.0, x,
-                0.0, 1.0, y,
-                0.0, 0.0, 1.0,
-            ]
+            mat: [1.0, 0.0, x, 0.0, 1.0, y, 0.0, 0.0, 1.0],
+            translate: Vector { x, y },
+            ..Default::default()
         }
+    }
+
+    pub fn get_translate(&self) -> Vector {
+        self.translate
+    }
+
+    pub fn get_rotation(&self) -> f32 {
+        self.rotate
     }
 }
 
-pub struct View {
-}
+pub struct View {}
 
 pub struct Window {
-    interface: Box<dyn WindowInterface>,
+    gi: Box<dyn GameInterface>,
+    images: HashMap<String, Box<dyn ImageInterface>>,
+    fonts: HashMap<String, Box<dyn FontInterface>>,
+    sounds: HashMap<String, Box<dyn SoundInterface>>,
+    music: HashMap<String, Box<dyn MusicInterface>>,
 }
 
 impl Window {
-    pub fn new() -> Self {
+    pub fn new(gi: Box<dyn GameInterface>) -> Self {
         Self {
-            interface: todo!(),
+            gi,
+            images: HashMap::new(),
+            fonts: HashMap::new(),
+            sounds: HashMap::new(),
+            music: HashMap::new(),
         }
+    }
+
+    pub fn get_gi(&self) -> &Box<dyn GameInterface> {
+        &self.gi
+    }
+
+    pub fn get_gi_mut(&mut self) -> &mut Box<dyn GameInterface> {
+        &mut self.gi
+    }
+
+    pub fn load_image(&mut self, path: &Path, name: String) -> Result<(), String> {
+        self.images.insert(name, self.gi.load_image(path)?);
+
+        Ok(())
+    }
+
+    pub fn load_font(&mut self, path: &Path, name: String) -> Result<(), String> {
+        self.fonts.insert(name, self.gi.load_font(path)?);
+
+        Ok(())
+    }
+
+    pub fn load_sound(&mut self, path: &Path, name: String) -> Result<(), String> {
+        self.sounds.insert(name, self.gi.load_sound(path)?);
+
+        Ok(())
+    }
+
+    pub fn load_music(&mut self, path: &Path, name: String) -> Result<(), String> {
+        self.music.insert(name, self.gi.load_music(path)?);
+
+        Ok(())
+    }
+
+    pub fn get_image(&self, name: &str) -> Result<&Box<dyn ImageInterface>, String> {
+        Ok(self
+            .images
+            .get(name)
+            .ok_or_else(|| format!("Image \"{name}\" not found"))?)
+    }
+
+    pub fn get_image_mut(&self, name: &str) -> Result<&mut Box<dyn ImageInterface>, String> {
+        Ok(self
+            .images
+            .get_mut(name)
+            .ok_or_else(|| format!("Image \"{name}\" not found"))?)
+    }
+
+    pub fn get_font(&self, name: &str) -> Result<&Box<dyn FontInterface>, String> {
+        Ok(self
+            .fonts
+            .get(name)
+            .ok_or_else(|| format!("Font \"{name}\" not found"))?)
+    }
+
+    pub fn get_font_mut(&self, name: &str) -> Result<&mut Box<dyn FontInterface>, String> {
+        Ok(self
+            .fonts
+            .get_mut(name)
+            .ok_or_else(|| format!("Font \"{name}\" not found"))?)
+    }
+
+    pub fn get_sound(&self, name: &str) -> Result<&Box<dyn SoundInterface>, String> {
+        Ok(self
+            .sounds
+            .get(name)
+            .ok_or_else(|| format!("Sound \"{name}\" not found"))?)
+    }
+
+    pub fn get_sound_mut(&self, name: &str) -> Result<&mut Box<dyn SoundInterface>, String> {
+        Ok(self
+            .sounds
+            .get_mut(name)
+            .ok_or_else(|| format!("Sound \"{name}\" not found"))?)
+    }
+
+    pub fn get_music(&self, name: &str) -> Result<&Box<dyn MusicInterface>, String> {
+        Ok(self
+            .music
+            .get(name)
+            .ok_or_else(|| format!("Music \"{name}\" not found"))?)
+    }
+
+    pub fn get_music_mut(&self, name: &str) -> Result<&mut Box<dyn MusicInterface>, String> {
+        Ok(self
+            .music
+            .get_mut(name)
+            .ok_or_else(|| format!("Music \"{name}\" not found"))?)
     }
 }
 
-pub struct Key {
-}
+pub struct Key {}
 
-pub struct Event {
-}
-
-pub struct Sound {
-}
-
-pub struct Font {
-}
-
-pub struct FontStyle {
-}
-
-pub struct Image {
-    image_w: usize,
-    image_h: usize,
-}
-
-impl Image {
-    pub fn area_rect(&self) -> Rectangle {
-        Rectangle {
-            x: 0.0,
-            y: 0.0,
-            w: self.image_w as f32,
-            h: self.image_h as f32,
-        }
-    }
-}
+pub struct Event {}
