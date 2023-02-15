@@ -3,7 +3,24 @@ use std::path::Path;
 use crate::faux_quicksilver::{Circle, Color, Rectangle, Transform, Vector};
 
 pub trait ImageInterface {
-    fn draw(&mut self, x: f32, y: f32) -> Result<(), String>;
+    fn draw(&mut self, x: f32, y: f32, color: Color) -> Result<(), String>;
+    fn draw_sub(&mut self, sub_rect: Rectangle, x: f32, y: f32, color: Color)
+        -> Result<(), String>;
+    fn draw_transform(
+        &mut self,
+        x: f32,
+        y: f32,
+        color: Color,
+        transform: Transform,
+    ) -> Result<(), String>;
+    fn draw_sub_transform(
+        &mut self,
+        sub_rect: Rectangle,
+        x: f32,
+        y: f32,
+        color: Color,
+        transform: Transform,
+    ) -> Result<(), String>;
     fn get_w(&self) -> usize;
     fn get_h(&self) -> usize;
     fn get_wh_rect(&self) -> Rectangle;
@@ -21,12 +38,21 @@ pub trait MusicInterface {
     fn play(&mut self, vol: f32) -> Result<(), String>;
     fn pause(&mut self) -> Result<(), String>;
     fn stop(&mut self) -> Result<(), String>;
+    fn set_loop(&mut self, loop_enable: bool) -> Result<(), String>;
+}
+
+pub trait CameraInterface {
+    fn get_view(&self) -> Result<Rectangle, String>;
+    fn get_view_xy(&self) -> Result<(f32, f32), String>;
+    fn set_view(&mut self, rect: Rectangle) -> Result<(), String>;
+    fn set_view_xy(&mut self, x: f32, y: f32) -> Result<(), String>;
 }
 
 pub trait GameInterface {
     fn get_dimensions(&self) -> Result<(f32, f32), String>;
     fn get_key_pressed(&mut self, key: char) -> Result<bool, String>;
     fn get_mouse_pressed(&mut self) -> Result<Option<(f32, f32)>, String>;
+    fn get_delta_time(&self) -> f32;
     fn clear_window(&mut self, color: Color) -> Result<(), String>;
     fn begin_drawing(&mut self) -> Result<(), String>;
     fn end_drawing(&mut self) -> Result<(), String>;
@@ -64,4 +90,8 @@ pub trait GameInterface {
     fn load_font(&mut self, path: &Path) -> Result<Box<dyn FontInterface>, String>;
     fn load_sound(&mut self, path: &Path) -> Result<Box<dyn SoundInterface>, String>;
     fn load_music(&mut self, path: &Path) -> Result<Box<dyn MusicInterface>, String>;
+
+    fn get_camera(&mut self) -> Result<Box<dyn CameraInterface>, String>;
+    fn get_default_camera(&mut self) -> Result<Box<dyn CameraInterface>, String>;
+    fn set_camera(&mut self, camera: &Box<dyn CameraInterface>) -> Result<(), String>;
 }

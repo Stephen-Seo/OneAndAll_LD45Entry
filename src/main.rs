@@ -1,3 +1,6 @@
+use std::{path::PathBuf, str::FromStr};
+
+use agnostic_interface::CameraInterface;
 //use quicksilver::{
 //    geom::{Circle, Rectangle, Transform, Vector},
 //    graphics::{
@@ -15,21 +18,21 @@ use serde::{Deserialize, Serialize};
 
 mod agnostic_interface;
 mod faux_quicksilver;
-use faux_quicksilver::{Circle, Color, Event, Key, Rectangle, Transform, Vector, View, Window};
+use faux_quicksilver::{Circle, Color, Event, Key, Rectangle, Transform, Vector, Window};
 
 const WIDTH_F: f32 = 800.0;
 const HEIGHT_F: f32 = 600.0;
-const MUSIC2_LENGTH: f64 = 2.0 * 60.0 * 1000.0;
-const TEXT_RATE: f64 = 100.0;
-const PP_GEN_RATE: f64 = 75.0;
+const MUSIC2_LENGTH: f32 = 2.0 * 60.0 * 1000.0;
+const TEXT_RATE: f32 = 100.0;
+const PP_GEN_RATE: f32 = 75.0;
 const PARTICLE_RAND_VEL_RANGE: f32 = 0.2;
 const PARTICLE_RAND_VEL_DIST: f32 = 0.2828427; // dist where x and y = 0.2
 const PARTICLE_RAND_ROT_RANGE: f32 = 0.5;
 const JOINING_OPACITY_RATE: f32 = 0.00013;
 const JOINING_FAR_DIST: f32 = 700.0;
 const JOINING_NEAR_DIST: f32 = 150.0;
-const DOUBLE_CLICK_TIME: f64 = 350.0;
-const SL_NOTIF_TIME: f64 = 5000.0;
+const DOUBLE_CLICK_TIME: f32 = 350.0;
+const SL_NOTIF_TIME: f32 = 5000.0;
 const MAX_MOONS: usize = 5;
 
 fn interp_sq_inv(x: f32) -> f32 {
@@ -65,7 +68,7 @@ enum MenuItemType {
         current_text: String,
         text_size: f32,
         text_c: Color,
-        timer: f64,
+        timer: f32,
     },
     InstantText {
         text: &'static str,
@@ -74,8 +77,8 @@ enum MenuItemType {
         text_color: Color,
     },
     Pause {
-        timer: f64,
-        length: f64,
+        timer: f32,
+        length: f32,
     },
 }
 
@@ -221,7 +224,7 @@ impl Menu {
         }
     }
 
-    fn pause(length: f64, first: bool) -> MenuItem {
+    fn pause(length: f32, first: bool) -> MenuItem {
         MenuItem {
             x: 0.0,
             y: 0.0,
@@ -558,16 +561,16 @@ struct Particle {
     vely: f32,
     velr: f32,
     r: f32,
-    lifetime: f64,
-    life_timer: f64,
+    lifetime: f32,
+    life_timer: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 struct ParticleSystem {
     particles: Vec<Particle>,
-    spawn_timer: f64,
-    spawn_time: f64,
-    lifetime: f64,
+    spawn_timer: f32,
+    spawn_time: f32,
+    lifetime: f32,
     host_rect: Rectangle,
     host_circle: Circle,
     is_rect: bool,
@@ -579,8 +582,8 @@ struct ParticleSystem {
 
 impl ParticleSystem {
     fn new(
-        spawn_time: f64,
-        lifetime: f64,
+        spawn_time: f32,
+        lifetime: f32,
         host_rect: Rectangle,
         host_circle: Circle,
         is_rect: bool,
@@ -604,7 +607,7 @@ impl ParticleSystem {
         }
     }
 
-    fn update(&mut self, dt: f64) {
+    fn update(&mut self, dt: f32) {
         for i in (0..self.particles.len()).rev() {
             self.particles[i].life_timer += dt;
             if self.particles[i].life_timer > self.particles[i].lifetime {
@@ -710,8 +713,8 @@ struct RotatingParticleSystem {
 
 impl RotatingParticleSystem {
     fn new(
-        spawn_time: f64,
-        lifetime: f64,
+        spawn_time: f32,
+        lifetime: f32,
         host_rect: Rectangle,
         host_circle: Circle,
         is_rect: bool,
@@ -741,7 +744,7 @@ impl RotatingParticleSystem {
         }
     }
 
-    fn update(&mut self, dt: f64) {
+    fn update(&mut self, dt: f32) {
         if self.particle_system.is_rect {
             let saved_rect = self.particle_system.host_rect;
             self.particle_system
@@ -803,15 +806,15 @@ struct ExplConvCircleParticle {
 
 struct ExplConvParticleSystem {
     particles: Vec<ExplConvCircleParticle>,
-    lifetime: f64,
+    lifetime: f32,
     host_circle: Circle,
     color: Color,
     opacity: f32,
-    life_timer: f64,
+    life_timer: f32,
 }
 
 impl ExplConvParticleSystem {
-    fn new(lifetime: f64, host_circle: Circle, color: Color, opacity: f32) -> Self {
+    fn new(lifetime: f32, host_circle: Circle, color: Color, opacity: f32) -> Self {
         ExplConvParticleSystem {
             particles: Vec::new(),
             lifetime,
@@ -834,7 +837,7 @@ impl ExplConvParticleSystem {
     }
 
     // returns true if finished
-    fn update(&mut self, dt: f64, planets: &mut Vec<Planet>) -> bool {
+    fn update(&mut self, dt: f32, planets: &mut Vec<Planet>) -> bool {
         self.life_timer += dt;
         if self.life_timer >= self.lifetime {
             if !self.particles.is_empty() {
@@ -873,7 +876,10 @@ impl ExplConvParticleSystem {
             self.color.a = (((self.life_timer / self.lifetime) as f32 / 2.0 + 0.5)
                 * self.opacity
                 * 255.0) as u8;
-            window.draw_ex(&particle.circle, Col(self.color), transform, 1);
+            window
+                .get_gi_mut()
+                .draw_circle_transform(particle.circle, self.color, transform)
+                .ok();
         }
     }
 }
@@ -933,7 +939,7 @@ impl Planet {
         planet
     }
 
-    fn update(&mut self, dt: f64) {
+    fn update(&mut self, dt: f32) {
         self.particle_system.host_circle.x = self.circle.x;
         self.particle_system.host_circle.y = self.circle.y;
         self.particle_system.update(dt);
@@ -946,7 +952,10 @@ impl Planet {
 
     fn draw(&mut self, window: &mut Window, transform: Transform) {
         self.particle_system.draw(window, transform);
-        window.draw_ex(&self.circle, Col(self.color), transform, 1);
+        window
+            .get_gi_mut()
+            .draw_circle_transform(self.circle, self.color, transform)
+            .ok();
         for moon in &mut self.moons {
             moon.draw(window, transform);
         }
@@ -995,22 +1004,25 @@ impl Star {
         star
     }
 
-    fn update(&mut self, dt: f64) {
+    fn update(&mut self, dt: f32) {
         self.particle_system.update(dt);
         self.r += self.velr * dt as f32;
     }
 
-    fn draw(&mut self, image: &mut String, window: &mut Window, transform: Transform) {
+    fn draw(&mut self, image: &str, window: &mut Window, transform: Transform) {
         self.particle_system.draw(window, transform);
-        let mut image_rect = image.area_rect();
+        let image = window.get_image(image).expect("Should be loaded image");
+        let mut image_rect = image.get_wh_rect();
         image_rect.x = self.particle_system.host_circle.x - image_rect.w / 2.0;
         image_rect.y = self.particle_system.host_circle.y - image_rect.h / 2.0;
-        window.draw_ex(
-            &image_rect,
-            Blended(image, self.color),
-            transform * Transform::rotate(self.r),
-            1,
-        );
+        image
+            .draw_transform(
+                image_rect.x,
+                image_rect.y,
+                self.color,
+                transform * Transform::rotate(self.r),
+            )
+            .ok();
     }
 }
 
@@ -1018,12 +1030,14 @@ impl Star {
 struct Fish {
     pos: Vector,
     r: f32,
-    swim_time: f64,
-    swim_timer: f64,
+    swim_time: f32,
+    swim_timer: f32,
     swim_v: f32,
-    anim_timer: f64,
-    anim_time: f64,
+    anim_timer: f32,
+    anim_time: f32,
     color: Color,
+    body_rect: Rectangle,
+    tail_rect: Rectangle,
 }
 
 enum FishState {
@@ -1043,6 +1057,18 @@ impl Fish {
             anim_timer,
             anim_time: anim_timer,
             color,
+            body_rect: Rectangle {
+                x: 0.0,
+                y: 0.0,
+                w: 32.0,
+                h: 16.0,
+            },
+            tail_rect: Rectangle {
+                x: 32.0,
+                y: 0.0,
+                w: 16.0,
+                h: 16.0,
+            },
         }
     }
 
@@ -1066,7 +1092,7 @@ impl Fish {
         }
     }
 
-    fn update(&mut self, dt: f64) {
+    fn update(&mut self, dt: f32) {
         self.swim_time -= dt;
         if self.swim_time < 220.0 {
             self.swim_v /= 1.1;
@@ -1087,41 +1113,40 @@ impl Fish {
         self.pos += Transform::rotate(self.r) * Vector::new(self.swim_v, 0.0) * dt as f32;
     }
 
-    fn draw(
-        &mut self,
-        fish_body: &String,
-        fish_tail: &String,
-        window: &mut Window,
-        transform: Transform,
-    ) {
-        let anim_angle = ((self.anim_timer / self.anim_time) * std::f64::consts::PI * 2.0).sin();
-        let mut body_rect = fish_body.area_rect();
+    fn draw(&mut self, i_fish: &str, window: &mut Window, transform: Transform) {
+        let fish_img = window
+            .get_image(i_fish)
+            .expect("\"fish\" Image should be loaded");
+        let anim_angle = ((self.anim_timer / self.anim_time) * std::f32::consts::PI * 2.0).sin();
+        let mut body_rect = self.body_rect;
         body_rect.x = self.pos.x - body_rect.w / 2.0;
         body_rect.y = self.pos.y - body_rect.h / 2.0;
         let body_tr =
             Transform::rotate(anim_angle as f32 * 30.0) * Transform::rotate(self.r + 180.0);
-        window.draw_ex(
-            &body_rect,
-            Blended(fish_body, self.color),
+        fish_img.draw_sub_transform(
+            self.body_rect,
+            body_rect.x,
+            body_rect.y,
+            self.color,
             transform * body_tr,
-            1,
         );
-        let mut tail_rect = fish_tail.area_rect();
+        let mut tail_rect = self.tail_rect;
         tail_rect.x = self.pos.x - tail_rect.w / 2.0;
         tail_rect.y = self.pos.y - tail_rect.h / 2.0;
-        let anim_angle = ((self.anim_timer / self.anim_time) * std::f64::consts::PI * 2.0
-            - std::f64::consts::PI / 3.0)
+        let anim_angle = ((self.anim_timer / self.anim_time) * std::f32::consts::PI * 2.0
+            - std::f32::consts::PI / 3.0)
             .sin();
         let tail_tr = body_tr
             * Transform::translate(body_rect.x / 1.5, 0.0)
             * Transform::translate(-tail_rect.x / 2.0, 0.0)
             * Transform::rotate(-anim_angle as f32 * 45.0)
             * Transform::translate(tail_rect.x / 2.0, 0.0);
-        window.draw_ex(
-            &tail_rect,
-            Blended(fish_tail, self.color),
+        fish_img.draw_sub_transform(
+            self.tail_rect,
+            tail_rect.x,
+            tail_rect.y,
+            self.color,
             transform * tail_tr,
-            1,
         );
     }
 }
@@ -1136,26 +1161,22 @@ struct SaveData {
 }
 
 enum SaveLoadNotification {
-    Save { text: Option<String>, timer: f64 },
-    Load { text: Option<String>, timer: f64 },
+    Save { text: Option<String>, timer: f32 },
+    Load { text: Option<String>, timer: f32 },
 }
 
 struct GameState {
-    s_boom: Sound,
-    s_get: Sound,
-    s_power_up: Sound,
-    s_tap: Sound,
-    s_speak_m: Sound,
-    s_speak_f: Sound,
-    font: Font,
-    music2: Sound,
-    i_star: Option<String>,
-    i_star_actual: Option<String>,
+    s_boom: String,
+    s_get: String,
+    s_power_up: String,
+    s_tap: String,
+    s_speak_m: String,
+    s_speak_f: String,
+    font: String,
+    music2: String,
+    i_star: String,
     i_fish: String,
-    i_fish_body: Option<String>,
-    i_fish_tail: Option<String>,
     music_on: bool,
-    music_timer: f64,
     menu: Menu,
     state: u32,
     state_dirty: bool,
@@ -1163,42 +1184,110 @@ struct GameState {
     current_item: Option<usize>,
     current_finished: bool,
     player: Rectangle,
-    player_r: f64,
+    player_r: f32,
     player_particles: ParticleSystem,
     joining_particles: RotatingParticleSystem,
     is_create_mode: bool,
-    click_release_time: f64,
-    dbl_click_timeout: Option<f64>,
-    click_time: Option<f64>,
+    click_release_time: f32,
+    dbl_click_timeout: Option<f32>,
+    click_time: Option<f32>,
     click_pos: Vector,
     mouse_pos: Vector,
     expl_conv_p_systems: Vec<ExplConvParticleSystem>,
     planets: Vec<Planet>,
     stars: Vec<Star>,
     fishes: Vec<Fish>,
-    camera: Rectangle,
+    camera: Box<dyn CameraInterface>,
     move_to: Vector,
     save_load_notification: Option<SaveLoadNotification>,
 }
 
 impl GameState {
-    fn new() -> Result<Self, String> {
+    fn new(window: &mut Window) -> Result<Self, String> {
+        let s_boom = String::from("boom.mp3");
+        window.load_sound(
+            &PathBuf::from_str("static/boom.mp3")
+                .map_err(|_| String::from("Failed to load \"static/boom.mp3\""))?,
+            s_boom.clone(),
+        )?;
+        let s_get = String::from("get.mp3");
+        window.load_sound(
+            &PathBuf::from_str("static/get.mp3")
+                .map_err(|_| String::from("Failed to load \"static/get.mp3\""))?,
+            s_get.clone(),
+        )?;
+        let s_power_up = String::from("power_up.mp3");
+        window.load_sound(
+            &PathBuf::from_str("static/power_up.mp3")
+                .map_err(|_| String::from("Failed to load \"static/power_up.mp3\""))?,
+            s_power_up.clone(),
+        )?;
+        let s_tap = String::from("tap.mp3");
+        window.load_sound(
+            &PathBuf::from_str("static/tap.mp3")
+                .map_err(|_| String::from("Failed to load \"static/tap.mp3\""))?,
+            s_tap.clone(),
+        )?;
+        let s_speak_m = String::from("speak_m.mp3");
+        window.load_sound(
+            &PathBuf::from_str("static/speak_m.mp3")
+                .map_err(|_| String::from("Failed to load \"static/speak_m.mp3\""))?,
+            s_speak_m.clone(),
+        )?;
+        let s_speak_f = String::from("speak_f.mp3");
+        window.load_sound(
+            &PathBuf::from_str("static/speak_f.mp3")
+                .map_err(|_| String::from("Failed to load \"static/speak_f.mp3\""))?,
+            s_speak_f.clone(),
+        )?;
+
+        let font = String::from("ClearSans-Regular.ttf");
+        window.load_font(
+            &PathBuf::from_str("static/ClearSans-Regular.ttf")
+                .map_err(|_| String::from("Failed to load \"static/ClearSans-Regular.ttf\""))?,
+            font.clone(),
+        )?;
+
+        let music2 = String::from("music2.mp3");
+        window.load_music(
+            &PathBuf::from_str("static/music2.mp3")
+                .map_err(|_| String::from("Failed to load \"static/music2.mp3\""))?,
+            music2.clone(),
+        )?;
+
+        let i_star = String::from("star.png");
+        window.load_image(
+            &PathBuf::from_str("static/star.png")
+                .map_err(|_| String::from("Failed to load \"static/star.png\""))?,
+            i_star.clone(),
+        )?;
+
+        let i_fish = String::from("fish.png");
+        window.load_image(
+            &PathBuf::from_str("static/fish.png")
+                .map_err(|_| String::from("Failed to load \"static/fish.png\""))?,
+            i_fish.clone(),
+        )?;
+
+        let camera = window.get_gi_mut().get_default_camera()?;
+        camera.set_view(Rectangle {
+            x: 0.0,
+            y: 0.0,
+            w: WIDTH_F,
+            h: HEIGHT_F,
+        });
         Ok(Self {
-            s_boom: Sound::load("boom.mp3"),
-            s_get: Sound::load("get.mp3"),
-            s_power_up: Sound::load("power_up.mp3"),
-            s_tap: Sound::load("tap.mp3"),
-            s_speak_m: Sound::load("speak_m.mp3"),
-            s_speak_f: Sound::load("speak_f.mp3"),
-            font: Font::load("ClearSans-Regular.ttf"),
-            music2: Sound::load("music2.mp3"),
-            i_star: Some(Image::load("star.png")),
-            i_star_actual: None,
-            i_fish: Image::load("fish.png"),
-            i_fish_body: None,
-            i_fish_tail: None,
+            s_boom,
+            s_get,
+            s_power_up,
+            s_tap,
+            s_speak_m,
+            s_speak_f,
+            font,
+            music2,
+            i_star,
+            i_fish,
             music_on: false,
-            music_timer: 0.0,
             menu: Menu::start(),
             state: 0,
             state_dirty: false,
@@ -1242,7 +1331,7 @@ impl GameState {
             planets: Vec::new(),
             stars: Vec::new(),
             fishes: Vec::new(),
-            camera: Rectangle::new(0.0, 0.0, WIDTH_F, HEIGHT_F),
+            camera,
             move_to: Vector::new(400.0, 300.0),
             save_load_notification: None,
         })
@@ -1505,8 +1594,10 @@ impl GameState {
                                     x: self.player.x,
                                     y: self.player.y,
                                 };
-                                self.camera.x = self.player.x - WIDTH_F / 2.0;
-                                self.camera.y = self.player.y - HEIGHT_F / 2.0;
+                                self.camera.set_view_xy(
+                                    self.player.x - WIDTH_F / 2.0,
+                                    self.player.y - HEIGHT_F / 2.0,
+                                );
                                 self.dbl_click_timeout = None;
                                 self.click_time = None;
                                 self.click_release_time = DOUBLE_CLICK_TIME;
@@ -1535,7 +1626,7 @@ impl GameState {
     }
 
     fn update(&mut self, window: &mut Window) -> Result<(), String> {
-        let dt = window.update_rate();
+        let dt = window.get_gi().get_delta_time();
 
         self.click_release_time += dt;
         if let Some(t) = &mut self.click_time {
@@ -1560,25 +1651,22 @@ impl GameState {
             (self.player.x - self.joining_particles.particle_system.host_rect.x) / 30.0;
         self.joining_particles.particle_system.host_rect.y +=
             (self.player.y - self.joining_particles.particle_system.host_rect.y) / 30.0;
-        self.camera.x += (self.player.x - WIDTH_F / 2.0 - self.camera.x) / 40.0;
-        self.camera.y += (self.player.y - HEIGHT_F / 2.0 - self.camera.y) / 40.0;
-        window.set_view(View::new(self.camera));
+        let (cx, cy) = self.camera.get_view_xy()?;
+        self.camera.set_view_xy(
+            (self.player.x - WIDTH_F / 2.0 - cx) / 40.0,
+            (self.player.y - HEIGHT_F / 2.0 - cy) / 40.0,
+        )?;
+        window.get_gi_mut().set_camera(&self.camera);
 
         self.player_r += dt / 10.0;
 
         if self.state_dirty {
             self.state_dirty = false;
             if self.state > 1 && !self.music_on {
-                let mut music_on = false;
-                self.music2.execute(|m2| {
-                    music_on = true;
-                    m2.set_volume(0.6);
-                    m2.play()
-                })?;
-                if music_on {
-                    self.music_on = true;
-                    self.music_timer = 0.0;
-                }
+                let music = window.get_music(&self.music2)?;
+                music.set_loop(true)?;
+                music.play(0.5)?;
+                self.music_on = true;
             }
             match self.state {
                 1 => {
@@ -1649,8 +1737,7 @@ impl GameState {
                     self.player.x = WIDTH_F / 2.0;
                     self.player.y = HEIGHT_F / 2.0;
                     self.move_to = Vector::new(WIDTH_F / 2.0, HEIGHT_F / 2.0);
-                    self.camera.x = 0.0;
-                    self.camera.y = 0.0;
+                    self.camera.set_view_xy(0.0, 0.0);
                     self.click_time = None;
                 }
             }
@@ -1674,22 +1761,12 @@ impl GameState {
         }
 
         if self.music_on {
-            self.music_timer += dt;
-            if self.music_timer > MUSIC2_LENGTH {
-                self.music_timer = 0.0;
-                self.music2.execute(|m2| m2.play())?;
-            }
         } else if self.state == 10 {
             let mut music_on = false;
-            self.music2.execute(|m2| {
-                music_on = true;
-                m2.set_volume(0.6);
-                m2.play()
-            })?;
-            if music_on {
-                self.music_on = true;
-                self.music_timer = 0.0;
-            }
+            let music = window.get_music(&self.music2)?;
+            music.set_loop(true)?;
+            music.play(0.5)?;
+            self.music_on = true;
         }
 
         for i in 0..self.menu.items.len() {
@@ -1835,37 +1912,6 @@ impl GameState {
             }
         }
 
-        if self.i_star_actual.is_none() {
-            if let Some(i_s) = &mut self.i_star {
-                let mut star: Option<Image> = None;
-                i_s.execute(|i| {
-                    star = Some(i.clone());
-                    Ok(())
-                })?;
-                self.i_star_actual = star;
-            }
-            if self.i_star_actual.is_some() {
-                self.i_star = None;
-            }
-        }
-
-        if self.i_fish_body.is_none() {
-            let mut body: Option<Image> = None;
-            self.i_fish.execute(|i| {
-                body = Some(i.subimage(Rectangle::new(0.0, 0.0, 32.0, 16.0)));
-                Ok(())
-            })?;
-            self.i_fish_body = body;
-        }
-        if self.i_fish_tail.is_none() {
-            let mut tail: Option<Image> = None;
-            self.i_fish.execute(|i| {
-                tail = Some(i.subimage(Rectangle::new(32.0, 0.0, 16.0, 16.0)));
-                Ok(())
-            })?;
-            self.i_fish_tail = tail;
-        }
-
         for fish in &mut self.fishes {
             fish.update(dt);
         }
@@ -1899,7 +1945,7 @@ impl GameState {
                         let mut image_rect = image.get_wh_rect();
                         image_rect.x = mi.x + (mi.w - image_rect.w) / 2.0;
                         image_rect.y = mi.y + (mi.h - image_rect.h) / 2.0;
-                        image.draw(image_rect.x, image_rect.y)?;
+                        image.draw(image_rect.x, image_rect.y, Color::WHITE)?;
                     }
                 }
                 MenuItemType::AppearingText {
@@ -1912,7 +1958,7 @@ impl GameState {
                 } => {
                     if let Some(i) = text_image {
                         let image = window.get_image_mut(&i)?;
-                        image.draw(mi.x, mi.y)?;
+                        image.draw(mi.x, mi.y, Color::WHITE)?;
                     }
                 }
                 MenuItemType::InstantText {
@@ -1924,7 +1970,7 @@ impl GameState {
                     if let Some(i) = text_image {
                         let image = window.get_image_mut(&i)?;
                         let mut image_rect = image.get_wh_rect();
-                        image.draw(mi.x, mi.y)?;
+                        image.draw(mi.x, mi.y, Color::WHITE)?;
                     }
                 }
                 MenuItemType::Pause { timer, length } => (),
@@ -1945,18 +1991,12 @@ impl GameState {
             planet.draw(window, Transform::IDENTITY);
         }
 
-        if let Some(i) = &mut self.i_star_actual {
-            for star in &mut self.stars {
-                star.draw(i, window, Transform::IDENTITY);
-            }
+        for star in &mut self.stars {
+            star.draw(&self.i_star, window, Transform::IDENTITY);
         }
 
-        if let Some(body) = &self.i_fish_body {
-            if let Some(tail) = &self.i_fish_tail {
-                for fish in &mut self.fishes {
-                    fish.draw(body, tail, window, Transform::IDENTITY);
-                }
-            }
+        for fish in &mut self.fishes {
+            fish.draw(&self.i_fish, window, Transform::IDENTITY);
         }
 
         // TODO

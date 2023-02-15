@@ -200,9 +200,9 @@ impl Transform {
         Self {
             mat: [
                 rot.cos(),
-                rot.sin(),
-                0.0,
                 -rot.sin(),
+                0.0,
+                rot.sin(),
                 rot.cos(),
                 0.0,
                 0.0,
@@ -230,8 +230,6 @@ impl Transform {
         self.rotate
     }
 }
-
-pub struct View {}
 
 pub struct Window {
     gi: Box<dyn GameInterface>,
