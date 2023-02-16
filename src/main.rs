@@ -63,7 +63,7 @@ enum MenuItemType {
     },
     AppearingText {
         text: &'static str,
-        current_text: String,
+        text_idx: usize,
         text_size: f32,
         text_c: Color,
         timer: f32,
@@ -207,9 +207,9 @@ impl Menu {
             item_type: MenuItemType::AppearingText {
                 text: s,
                 text_size,
-                current_text: String::new(),
                 text_c: Color::WHITE,
                 timer: 0.0,
+                text_idx: 0,
             },
             is_hover: false,
             is_focus: false,
@@ -1497,12 +1497,12 @@ impl GameState {
                     match &mut mi.item_type {
                         MenuItemType::AppearingText {
                             text,
-                            current_text,
+                            text_idx,
                             text_size,
                             text_c,
                             timer,
                         } => {
-                            *current_text = text.to_string();
+                            *text_idx = text.len();
                         }
                         MenuItemType::Button {
                             text,
@@ -1745,7 +1745,7 @@ impl GameState {
                     }
                     MenuItemType::AppearingText {
                         text,
-                        current_text,
+                        text_idx,
                         text_size,
                         text_c,
                         timer,
@@ -1753,11 +1753,8 @@ impl GameState {
                         *timer += dt;
                         if *timer > TEXT_RATE {
                             *timer -= TEXT_RATE;
-                            let next = text.chars().nth(current_text.len());
-                            if let Some(next_t) = next {
-                                current_text.push(next_t);
-                                window.get_sound_mut(&self.s_tap)?.play(0.2)?;
-                            } else {
+                            *text_idx += 1;
+                            if *text_idx >= text.len() {
                                 mi.is_loaded = true;
                                 if i + 1 < self.menu.items.len() {
                                     self.menu.items[i + 1].is_loaded = false;
@@ -1893,13 +1890,17 @@ impl GameState {
                 }
                 MenuItemType::AppearingText {
                     text,
-                    current_text,
+                    text_idx,
                     text_size,
                     text_c,
                     timer,
                 } => {
                     window.get_font_mut(&self.font)?.draw(
-                        current_text,
+                        if *text_idx < text.len() {
+                            &text[0..*text_idx]
+                        } else {
+                            text
+                        },
                         text_size.round() as u32,
                         rect.x,
                         rect.y,
