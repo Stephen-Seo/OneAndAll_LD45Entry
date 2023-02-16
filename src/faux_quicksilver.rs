@@ -250,12 +250,12 @@ impl Window {
         }
     }
 
-    pub fn get_gi(&self) -> &Box<dyn GameInterface> {
-        &self.gi
+    pub fn get_gi(&self) -> &dyn GameInterface {
+        self.gi.as_ref()
     }
 
-    pub fn get_gi_mut(&mut self) -> &mut Box<dyn GameInterface> {
-        &mut self.gi
+    pub fn get_gi_mut(&mut self) -> &mut dyn GameInterface {
+        self.gi.as_mut()
     }
 
     pub fn load_image(&mut self, path: &Path, name: String) -> Result<(), String> {
@@ -282,60 +282,68 @@ impl Window {
         Ok(())
     }
 
-    pub fn get_image(&self, name: &str) -> Result<&Box<dyn ImageInterface>, String> {
+    pub fn get_image(&self, name: &str) -> Result<&dyn ImageInterface, String> {
         Ok(self
             .images
             .get(name)
-            .ok_or_else(|| format!("Image \"{name}\" not found"))?)
+            .ok_or_else(|| format!("Image \"{name}\" not found"))?
+            .as_ref())
     }
 
-    pub fn get_image_mut(&self, name: &str) -> Result<&mut Box<dyn ImageInterface>, String> {
+    pub fn get_image_mut(&self, name: &str) -> Result<&mut dyn ImageInterface, String> {
         Ok(self
             .images
             .get_mut(name)
-            .ok_or_else(|| format!("Image \"{name}\" not found"))?)
+            .ok_or_else(|| format!("Image \"{name}\" not found"))?
+            .as_mut())
     }
 
-    pub fn get_font(&self, name: &str) -> Result<&Box<dyn FontInterface>, String> {
+    pub fn get_font(&self, name: &str) -> Result<&dyn FontInterface, String> {
         Ok(self
             .fonts
             .get(name)
-            .ok_or_else(|| format!("Font \"{name}\" not found"))?)
+            .ok_or_else(|| format!("Font \"{name}\" not found"))?
+            .as_ref())
     }
 
-    pub fn get_font_mut(&self, name: &str) -> Result<&mut Box<dyn FontInterface>, String> {
+    pub fn get_font_mut(&self, name: &str) -> Result<&mut dyn FontInterface, String> {
         Ok(self
             .fonts
             .get_mut(name)
-            .ok_or_else(|| format!("Font \"{name}\" not found"))?)
+            .ok_or_else(|| format!("Font \"{name}\" not found"))?
+            .as_mut())
     }
 
-    pub fn get_sound(&self, name: &str) -> Result<&Box<dyn SoundInterface>, String> {
+    pub fn get_sound(&self, name: &str) -> Result<&dyn SoundInterface, String> {
         Ok(self
             .sounds
             .get(name)
-            .ok_or_else(|| format!("Sound \"{name}\" not found"))?)
+            .ok_or_else(|| format!("Sound \"{name}\" not found"))?
+            .as_ref())
     }
 
-    pub fn get_sound_mut(&self, name: &str) -> Result<&mut Box<dyn SoundInterface>, String> {
+    pub fn get_sound_mut(&self, name: &str) -> Result<&mut dyn SoundInterface, String> {
         Ok(self
             .sounds
             .get_mut(name)
-            .ok_or_else(|| format!("Sound \"{name}\" not found"))?)
+            .ok_or_else(|| format!("Sound \"{name}\" not found"))?
+            .as_mut())
     }
 
-    pub fn get_music(&self, name: &str) -> Result<&Box<dyn MusicInterface>, String> {
+    pub fn get_music(&self, name: &str) -> Result<&dyn MusicInterface, String> {
         Ok(self
             .music
             .get(name)
-            .ok_or_else(|| format!("Music \"{name}\" not found"))?)
+            .ok_or_else(|| format!("Music \"{name}\" not found"))?
+            .as_ref())
     }
 
-    pub fn get_music_mut(&self, name: &str) -> Result<&mut Box<dyn MusicInterface>, String> {
+    pub fn get_music_mut(&self, name: &str) -> Result<&mut dyn MusicInterface, String> {
         Ok(self
             .music
             .get_mut(name)
-            .ok_or_else(|| format!("Music \"{name}\" not found"))?)
+            .ok_or_else(|| format!("Music \"{name}\" not found"))?
+            .as_mut())
     }
 }
 
