@@ -1899,7 +1899,7 @@ impl GameState {
                     timer,
                 } => {
                     window.get_font_mut(&self.font)?.draw(
-                        text,
+                        current_text,
                         text_size.round() as u32,
                         rect.x,
                         rect.y,
