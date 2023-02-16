@@ -1880,13 +1880,9 @@ impl GameState {
                     } else {
                         window.get_gi_mut().draw_rect(rect, *c)?;
                     }
-                    window.get_font_mut(&self.font)?.draw(
-                        text,
-                        rect.h.round() as u32,
-                        rect.x,
-                        rect.y,
-                        *text_c,
-                    )?;
+                    window
+                        .get_font_mut(&self.font)?
+                        .draw(text, 20, rect.x, rect.y, *text_c)?;
                 }
                 MenuItemType::AppearingText {
                     text,
@@ -1901,7 +1897,7 @@ impl GameState {
                         } else {
                             text
                         },
-                        text_size.round() as u32,
+                        20,
                         rect.x,
                         rect.y,
                         *text_c,
