@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 
 mod agnostic_interface;
 mod faux_quicksilver;
-use faux_quicksilver::{Circle, Color, Event, Key, Rectangle, Transform, Vector, Window};
+use faux_quicksilver::{Circle, Color, Rectangle, Transform, Vector, Window};
 
 const WIDTH_F: f32 = 800.0;
 const HEIGHT_F: f32 = 600.0;
@@ -57,14 +57,12 @@ fn interp_sq(x: f32) -> f32 {
 enum MenuItemType {
     Button {
         text: &'static str,
-        text_image: Option<String>,
         text_c: Color,
         h_c: Color,
         c: Color,
     },
     AppearingText {
         text: &'static str,
-        text_image: Option<String>,
         current_text: String,
         text_size: f32,
         text_c: Color,
@@ -72,7 +70,6 @@ enum MenuItemType {
     },
     InstantText {
         text: &'static str,
-        text_image: Option<String>,
         text_size: f32,
         text_color: Color,
     },
@@ -122,7 +119,6 @@ impl Menu {
             h,
             item_type: MenuItemType::Button {
                 text: s,
-                text_image: None,
                 text_c: t_color,
                 h_c: boxh_color,
                 c: box_color,
@@ -141,7 +137,6 @@ impl Menu {
             h: 150.0,
             item_type: MenuItemType::Button {
                 text: "Start the Game",
-                text_image: None,
                 text_c: Color::WHITE,
                 h_c: Color::from_rgba(0x66, 0xFF, 0xFF, 255),
                 c: Color::from_rgba(0x33, 0xDD, 0xDD, 255),
@@ -194,7 +189,6 @@ impl Menu {
             h: 0.0,
             item_type: MenuItemType::InstantText {
                 text: s,
-                text_image: None,
                 text_size,
                 text_color: Color::WHITE,
             },
@@ -212,7 +206,6 @@ impl Menu {
             h: 0.0,
             item_type: MenuItemType::AppearingText {
                 text: s,
-                text_image: None,
                 text_size,
                 current_text: String::new(),
                 text_c: Color::WHITE,
@@ -1011,7 +1004,7 @@ impl Star {
 
     fn draw(&mut self, image: &str, window: &mut Window, transform: Transform) {
         self.particle_system.draw(window, transform);
-        let image = window.get_image(image).expect("Should be loaded image");
+        let image = window.get_image_mut(image).expect("Should be loaded image");
         let mut image_rect = image.get_wh_rect();
         image_rect.x = self.particle_system.host_circle.x - image_rect.w / 2.0;
         image_rect.y = self.particle_system.host_circle.y - image_rect.h / 2.0;
@@ -1115,7 +1108,7 @@ impl Fish {
 
     fn draw(&mut self, i_fish: &str, window: &mut Window, transform: Transform) {
         let fish_img = window
-            .get_image(i_fish)
+            .get_image_mut(i_fish)
             .expect("\"fish\" Image should be loaded");
         let anim_angle = ((self.anim_timer / self.anim_time) * std::f32::consts::PI * 2.0).sin();
         let mut body_rect = self.body_rect;
@@ -1269,7 +1262,7 @@ impl GameState {
             i_fish.clone(),
         )?;
 
-        let camera = window.get_gi_mut().get_default_camera()?;
+        let mut camera = window.get_gi_mut().get_default_camera()?;
         camera.set_view(Rectangle {
             x: 0.0,
             y: 0.0,
@@ -1337,296 +1330,253 @@ impl GameState {
         })
     }
 
-    fn event(&mut self, event: &Event, window: &mut Window) -> Result<(), String> {
-        match event {
-            Event::MouseMoved(v) => {
-                self.mouse_pos = *v;
-                let mut hovered = false;
-                for i in 0..self.menu.items.len() {
-                    if self.menu.items[i].is_inside(v.x, v.y) {
-                        self.menu.items[i].is_hover = true;
-                        self.current_item = Some(i);
-                        hovered = true;
-                    } else {
-                        self.menu.items[i].is_hover = false;
-                    }
-                }
-                if !hovered {
-                    self.current_item = None;
-                }
-            }
-            Event::MouseButton(button, state) => {
-                if let ButtonState::Released = state {
-                    if self.dbl_click_timeout.is_none() {
-                        self.click_release_time = 0.0;
-                    }
-                } else if let ButtonState::Pressed = state {
-                    if self.current_finished {
-                        if self.is_create_mode {
-                            if self.click_release_time < DOUBLE_CLICK_TIME {
-                                self.click_release_time = DOUBLE_CLICK_TIME;
-                                self.dbl_click_timeout = Some(0.0);
-                                self.click_time = None;
-                                if self.state == 8 {
-                                    let mut expl_conv_system = ExplConvParticleSystem::new(
-                                        1500.0,
-                                        Circle::new(self.mouse_pos.x, self.mouse_pos.y, 20.0),
-                                        Color::from_rgba(0x99, 0xFF, 0x99, 255),
-                                        1.0,
-                                    );
-                                    expl_conv_system.activate(30, 200.0);
-                                    self.expl_conv_p_systems.push(expl_conv_system);
-                                    self.state = 9;
-                                    self.state_dirty = true;
-                                    self.s_boom.execute(|s| {
-                                        s.set_volume(0.8);
-                                        s.play()
-                                    })?;
-                                } else if self.state == 10 {
-                                    let mut rng = rand::thread_rng();
-                                    let rand_out = rng.gen_range(0.0, 1.0);
-                                    if rand_out < 0.6 {
-                                        // spawn planet
-                                        let mut expl_conv_system = ExplConvParticleSystem::new(
-                                            rng.gen_range(1200.0, 1600.0),
-                                            Circle::new(
-                                                self.mouse_pos.x,
-                                                self.mouse_pos.y,
-                                                rng.gen_range(15.0, 25.0),
-                                            ),
-                                            Color::from_rgba(
-                                                rng.gen_range(0x44, 0xFF),
-                                                rng.gen_range(0x44, 0xFF),
-                                                rng.gen_range(0x44, 0xFF),
-                                                255,
-                                            ),
-                                            1.0,
-                                        );
-                                        expl_conv_system.activate(
-                                            rng.gen_range(13, 40),
-                                            rng.gen_range(150.0, 300.0),
-                                        );
-                                        self.expl_conv_p_systems.push(expl_conv_system);
-                                    } else if rand_out < 0.85 {
-                                        // spawn star
-                                        let rot_clockwise = rng.gen_bool(0.5);
-                                        self.stars.push(Star::new(
-                                            Circle::new(
-                                                self.mouse_pos.x,
-                                                self.mouse_pos.y,
-                                                rng.gen_range(3.0, 7.0),
-                                            ),
-                                            Color::from_rgba(
-                                                rng.gen_range(0x58, 0xFF),
-                                                rng.gen_range(0x58, 0xFF),
-                                                rng.gen_range(0x58, 0xFF),
-                                                255,
-                                            ),
-                                            if rot_clockwise {
-                                                rng.gen_range(0.1, 0.3)
-                                            } else {
-                                                rng.gen_range(-0.3, -0.1)
-                                            },
-                                            rng.gen_range(0.0, 90.0),
-                                        ));
-                                    } else {
-                                        // spawn fish
-                                        for i in 0..rng.gen_range(1, 4) {
-                                            self.fishes.push(Fish::new(
-                                                self.mouse_pos,
-                                                rng.gen_range(0.0, 360.0),
-                                                Color::from_rgba(
-                                                    rng.gen_range(0x44, 0xFF),
-                                                    rng.gen_range(0x44, 0xFF),
-                                                    rng.gen_range(0x44, 0xFF),
-                                                    255,
-                                                ),
-                                            ));
-                                        }
-                                    }
-                                    self.s_boom.execute(|s| {
-                                        s.set_volume(0.8);
-                                        s.play()
-                                    })?;
-                                }
-                            } else if self.state == 10 {
-                                self.click_time = Some(0.0);
-                                self.click_pos = self.mouse_pos;
-                            }
-                        } else if self.selection_mode {
-                            if let Some(idx) = self.current_item {
-                                match self.state {
-                                    0 => {
-                                        self.state += 1;
-                                        self.state_dirty = true;
-                                    }
-                                    2 => {
-                                        if idx == 5 {
-                                            // hope
-                                            self.state = 3;
-                                            self.state_dirty = true;
-                                            self.joining_particles.particle_system.color =
-                                                Color::from_rgba(0xAA, 0xCC, 0xFF, 255);
-                                        } else if idx == 6 {
-                                            // miracles
-                                            self.state = 4;
-                                            self.state_dirty = true;
-                                            self.joining_particles.particle_system.color =
-                                                Color::from_rgba(0xFF, 0xFF, 0xAA, 255);
-                                        } else if idx == 7 {
-                                            // kindness
-                                            self.state = 5;
-                                            self.state_dirty = true;
-                                            self.joining_particles.particle_system.color =
-                                                Color::from_rgba(0xBB, 0xFF, 0xBB, 255);
-                                        } else {
-                                            // determination
-                                            self.state = 6;
-                                            self.state_dirty = true;
-                                            self.joining_particles.particle_system.color =
-                                                Color::from_rgba(0xFF, 0xAA, 0xAA, 255);
-                                        }
-                                        self.s_get.execute(|s| {
-                                            s.set_volume(0.7);
-                                            s.play()
-                                        })?;
-                                    }
-                                    _ => {
-                                        self.state = 0;
-                                        self.state_dirty = true;
-                                    }
-                                }
-                            }
-                        } else {
-                            match self.state {
-                                0 | 1 => self.state += 1,
-                                3 | 4 | 5 | 6 => self.state = 7,
-                                7 => self.state = 8,
-                                9 => self.state = 10,
-                                _ => self.state = 0,
-                            }
-                            self.state_dirty = true;
-                        }
-                    } else {
-                        for mi in &mut self.menu.items {
-                            match &mut mi.item_type {
-                                MenuItemType::AppearingText {
-                                    text,
-                                    text_image,
-                                    current_text,
-                                    text_size,
-                                    text_c,
-                                    timer,
-                                } => {
-                                    self.font.execute(|f| {
-                                        *current_text = text.to_string();
-                                        let style = FontStyle::new(*text_size, *text_c);
-                                        *text_image = Some(f.render(text, &style)?);
-                                        Ok(())
-                                    })?;
-                                }
-                                MenuItemType::Button {
-                                    text,
-                                    text_image,
-                                    text_c,
-                                    h_c,
-                                    c,
-                                } => {
-                                    if text_image.is_none() {
-                                        self.font.execute(|font| {
-                                            let style = FontStyle::new(42.0, *text_c);
-                                            *text_image = Some(font.render(text, &style)?);
-                                            Ok(())
-                                        })?;
-                                    }
-                                }
-                                MenuItemType::Pause { timer, length } => (),
-                                MenuItemType::InstantText {
-                                    text,
-                                    text_image,
-                                    text_size,
-                                    text_color,
-                                } => {
-                                    if text_image.is_none() {
-                                        self.font.execute(|f| {
-                                            let style = FontStyle::new(*text_size, *text_color);
-                                            *text_image = Some(f.render(text, &style)?);
-                                            Ok(())
-                                        })?;
-                                    }
-                                }
-                            }
-                            mi.is_loaded = true;
-                        }
-                        self.current_finished = true;
-                    }
-                }
-            }
-            Event::Key(key, state) => {
-                if let ButtonState::Pressed = state {
-                    match key {
-                        Key::S => {
-                            if self.state == 10 {
-                                let save_data = SaveData {
-                                    planets: self.planets.clone(),
-                                    stars: self.stars.clone(),
-                                    fishes: self.fishes.clone(),
-                                    player: self.player.clone(),
-                                    joining_particles: self.joining_particles.clone(),
-                                };
-                                save("OneAndAll_LD45", "slot0", &save_data)?;
-                                self.save_load_notification = Some(SaveLoadNotification::Save {
-                                    text: None,
-                                    timer: SL_NOTIF_TIME,
-                                });
-                            }
-                        }
-                        Key::L => {
-                            let load_result = load::<SaveData>("OneAndAll_LD45", "slot0");
-                            if let Ok(save_data) = load_result {
-                                self.planets = save_data.planets;
-                                self.stars = save_data.stars;
-                                self.fishes = save_data.fishes;
-                                self.player = save_data.player;
-                                self.joining_particles = save_data.joining_particles;
-                                self.expl_conv_p_systems.clear();
-                                self.move_to = Vector {
-                                    x: self.player.x,
-                                    y: self.player.y,
-                                };
-                                self.camera.set_view_xy(
-                                    self.player.x - WIDTH_F / 2.0,
-                                    self.player.y - HEIGHT_F / 2.0,
-                                );
-                                self.dbl_click_timeout = None;
-                                self.click_time = None;
-                                self.click_release_time = DOUBLE_CLICK_TIME;
+    fn update(&mut self, window: &mut Window) -> Result<(), String> {
+        let dt = window.get_gi().get_delta_time();
 
-                                self.state = 10;
-                                self.state_dirty = true;
-                                self.save_load_notification = Some(SaveLoadNotification::Load {
-                                    text: None,
-                                    timer: SL_NOTIF_TIME,
-                                });
+        // check mouse pos
+        {
+            self.mouse_pos = window.get_gi().get_mouse_xy_vec()?;
+            let mut hovered = false;
+            for i in 0..self.menu.items.len() {
+                if self.menu.items[i].is_inside(self.mouse_pos.x, self.mouse_pos.y) {
+                    self.menu.items[i].is_hover = true;
+                    self.current_item = Some(i);
+                    hovered = true;
+                } else {
+                    self.menu.items[i].is_hover = false;
+                }
+            }
+            if !hovered {
+                self.current_item = None;
+            }
+        }
+
+        // check mouse down
+        if window.get_gi_mut().get_mouse_down()?.is_none() {
+            if self.dbl_click_timeout.is_none() {
+                self.click_release_time = 0.0;
+            }
+        } else {
+            if self.current_finished {
+                if self.is_create_mode {
+                    if self.click_release_time < DOUBLE_CLICK_TIME {
+                        self.click_release_time = DOUBLE_CLICK_TIME;
+                        self.dbl_click_timeout = Some(0.0);
+                        self.click_time = None;
+                        if self.state == 8 {
+                            let mut expl_conv_system = ExplConvParticleSystem::new(
+                                1500.0,
+                                Circle::new(self.mouse_pos.x, self.mouse_pos.y, 20.0),
+                                Color::from_rgba(0x99, 0xFF, 0x99, 255),
+                                1.0,
+                            );
+                            expl_conv_system.activate(30, 200.0);
+                            self.expl_conv_p_systems.push(expl_conv_system);
+                            self.state = 9;
+                            self.state_dirty = true;
+                            window.get_sound_mut(&self.s_boom)?.play(0.8)?;
+                        } else if self.state == 10 {
+                            let mut rng = rand::thread_rng();
+                            let rand_out = rng.gen_range(0.0, 1.0);
+                            if rand_out < 0.6 {
+                                // spawn planet
+                                let mut expl_conv_system = ExplConvParticleSystem::new(
+                                    rng.gen_range(1200.0, 1600.0),
+                                    Circle::new(
+                                        self.mouse_pos.x,
+                                        self.mouse_pos.y,
+                                        rng.gen_range(15.0, 25.0),
+                                    ),
+                                    Color::from_rgba(
+                                        rng.gen_range(0x44, 0xFF),
+                                        rng.gen_range(0x44, 0xFF),
+                                        rng.gen_range(0x44, 0xFF),
+                                        255,
+                                    ),
+                                    1.0,
+                                );
+                                expl_conv_system
+                                    .activate(rng.gen_range(13, 40), rng.gen_range(150.0, 300.0));
+                                self.expl_conv_p_systems.push(expl_conv_system);
+                            } else if rand_out < 0.85 {
+                                // spawn star
+                                let rot_clockwise = rng.gen_bool(0.5);
+                                self.stars.push(Star::new(
+                                    Circle::new(
+                                        self.mouse_pos.x,
+                                        self.mouse_pos.y,
+                                        rng.gen_range(3.0, 7.0),
+                                    ),
+                                    Color::from_rgba(
+                                        rng.gen_range(0x58, 0xFF),
+                                        rng.gen_range(0x58, 0xFF),
+                                        rng.gen_range(0x58, 0xFF),
+                                        255,
+                                    ),
+                                    if rot_clockwise {
+                                        rng.gen_range(0.1, 0.3)
+                                    } else {
+                                        rng.gen_range(-0.3, -0.1)
+                                    },
+                                    rng.gen_range(0.0, 90.0),
+                                ));
+                            } else {
+                                // spawn fish
+                                for i in 0..rng.gen_range(1, 4) {
+                                    self.fishes.push(Fish::new(
+                                        self.mouse_pos,
+                                        rng.gen_range(0.0, 360.0),
+                                        Color::from_rgba(
+                                            rng.gen_range(0x44, 0xFF),
+                                            rng.gen_range(0x44, 0xFF),
+                                            rng.gen_range(0x44, 0xFF),
+                                            255,
+                                        ),
+                                    ));
+                                }
                             }
+                            window.get_sound_mut(&self.s_boom)?.play(0.8)?;
                         }
-                        Key::R => {
-                            if self.state == 10 {
+                    } else if self.state == 10 {
+                        self.click_time = Some(0.0);
+                        self.click_pos = self.mouse_pos;
+                    }
+                } else if self.selection_mode {
+                    if let Some(idx) = self.current_item {
+                        match self.state {
+                            0 => {
+                                self.state += 1;
+                                self.state_dirty = true;
+                            }
+                            2 => {
+                                if idx == 5 {
+                                    // hope
+                                    self.state = 3;
+                                    self.state_dirty = true;
+                                    self.joining_particles.particle_system.color =
+                                        Color::from_rgba(0xAA, 0xCC, 0xFF, 255);
+                                } else if idx == 6 {
+                                    // miracles
+                                    self.state = 4;
+                                    self.state_dirty = true;
+                                    self.joining_particles.particle_system.color =
+                                        Color::from_rgba(0xFF, 0xFF, 0xAA, 255);
+                                } else if idx == 7 {
+                                    // kindness
+                                    self.state = 5;
+                                    self.state_dirty = true;
+                                    self.joining_particles.particle_system.color =
+                                        Color::from_rgba(0xBB, 0xFF, 0xBB, 255);
+                                } else {
+                                    // determination
+                                    self.state = 6;
+                                    self.state_dirty = true;
+                                    self.joining_particles.particle_system.color =
+                                        Color::from_rgba(0xFF, 0xAA, 0xAA, 255);
+                                }
+                                window.get_sound_mut(&self.s_get)?.play(0.7)?;
+                            }
+                            _ => {
                                 self.state = 0;
                                 self.state_dirty = true;
                             }
                         }
-                        _ => (),
                     }
+                } else {
+                    match self.state {
+                        0 | 1 => self.state += 1,
+                        3 | 4 | 5 | 6 => self.state = 7,
+                        7 => self.state = 8,
+                        9 => self.state = 10,
+                        _ => self.state = 0,
+                    }
+                    self.state_dirty = true;
                 }
+            } else {
+                for mi in &mut self.menu.items {
+                    match &mut mi.item_type {
+                        MenuItemType::AppearingText {
+                            text,
+                            current_text,
+                            text_size,
+                            text_c,
+                            timer,
+                        } => {
+                            *current_text = text.to_string();
+                        }
+                        MenuItemType::Button {
+                            text,
+                            text_c,
+                            h_c,
+                            c,
+                        } => {
+                            //let style = FontStyle::new(42.0, *text_c);
+                        }
+                        MenuItemType::Pause { timer, length } => (),
+                        MenuItemType::InstantText {
+                            text,
+                            text_size,
+                            text_color,
+                        } => {}
+                    }
+                    mi.is_loaded = true;
+                }
+                self.current_finished = true;
             }
-            _ => (),
         }
-        Ok(())
-    }
 
-    fn update(&mut self, window: &mut Window) -> Result<(), String> {
-        let dt = window.get_gi().get_delta_time();
+        // check pressed keys
+        if window.get_gi_mut().get_key_pressed('s')? {
+            if self.state == 10 {
+                let save_data = SaveData {
+                    planets: self.planets.clone(),
+                    stars: self.stars.clone(),
+                    fishes: self.fishes.clone(),
+                    player: self.player.clone(),
+                    joining_particles: self.joining_particles.clone(),
+                };
+                // TODO
+                //save("OneAndAll_LD45", "slot0", &save_data)?;
+                self.save_load_notification = Some(SaveLoadNotification::Save {
+                    text: None,
+                    timer: SL_NOTIF_TIME,
+                });
+            }
+        } else if window.get_gi_mut().get_key_pressed('l')? {
+            // TODO
+            //let load_result = load::<SaveData>("OneAndAll_LD45", "slot0");
+            //if let Ok(save_data) = load_result {
+            //    self.planets = save_data.planets;
+            //    self.stars = save_data.stars;
+            //    self.fishes = save_data.fishes;
+            //    self.player = save_data.player;
+            //    self.joining_particles = save_data.joining_particles;
+            //    self.expl_conv_p_systems.clear();
+            //    self.move_to = Vector {
+            //        x: self.player.x,
+            //        y: self.player.y,
+            //    };
+            //    self.camera.set_view_xy(
+            //        self.player.x - WIDTH_F / 2.0,
+            //        self.player.y - HEIGHT_F / 2.0,
+            //    );
+            //    self.dbl_click_timeout = None;
+            //    self.click_time = None;
+            //    self.click_release_time = DOUBLE_CLICK_TIME;
+
+            //    self.state = 10;
+            //    self.state_dirty = true;
+            //    self.save_load_notification = Some(SaveLoadNotification::Load {
+            //        text: None,
+            //        timer: SL_NOTIF_TIME,
+            //    });
+            //}
+        } else if window.get_gi_mut().get_key_pressed('r')? {
+            if self.state == 10 {
+                self.state = 0;
+                self.state_dirty = true;
+            }
+        }
 
         self.click_release_time += dt;
         if let Some(t) = &mut self.click_time {
@@ -1663,7 +1613,7 @@ impl GameState {
         if self.state_dirty {
             self.state_dirty = false;
             if self.state > 1 && !self.music_on {
-                let music = window.get_music(&self.music2)?;
+                let music = window.get_music_mut(&self.music2)?;
                 music.set_loop(true)?;
                 music.play(0.5)?;
                 self.music_on = true;
@@ -1763,7 +1713,7 @@ impl GameState {
         if self.music_on {
         } else if self.state == 10 {
             let mut music_on = false;
-            let music = window.get_music(&self.music2)?;
+            let music = window.get_music_mut(&self.music2)?;
             music.set_loop(true)?;
             music.play(0.5)?;
             self.music_on = true;
@@ -1775,28 +1725,26 @@ impl GameState {
                 match &mut mi.item_type {
                     MenuItemType::Button {
                         text,
-                        text_image,
                         text_c,
                         h_c,
                         c,
                     } => {
-                        self.font.execute(|font| {
-                            let style = FontStyle::new(42.0, *text_c);
-                            *text_image = Some(font.render(text, &style)?);
-                            Ok(())
-                        })?;
-                        if text_image.is_some() {
-                            mi.is_loaded = true;
-                            if i + 1 < self.menu.items.len() {
-                                self.menu.items[i + 1].is_loaded = false;
-                            } else {
-                                self.current_finished = true;
-                            }
+                        //self.font.execute(|font| {
+                        //    let style = FontStyle::new(42.0, *text_c);
+                        //    *text_image = Some(font.render(text, &style)?);
+                        //    Ok(())
+                        //})?;
+                        //if text_image.is_some() {
+                        mi.is_loaded = true;
+                        if i + 1 < self.menu.items.len() {
+                            self.menu.items[i + 1].is_loaded = false;
+                        } else {
+                            self.current_finished = true;
                         }
+                        //}
                     }
                     MenuItemType::AppearingText {
                         text,
-                        text_image,
                         current_text,
                         text_size,
                         text_c,
@@ -1808,10 +1756,7 @@ impl GameState {
                             let next = text.chars().nth(current_text.len());
                             if let Some(next_t) = next {
                                 current_text.push(next_t);
-                                self.s_tap.execute(|s| {
-                                    s.set_volume(0.2);
-                                    s.play()
-                                })?;
+                                window.get_sound_mut(&self.s_tap)?.play(0.2)?;
                             } else {
                                 mi.is_loaded = true;
                                 if i + 1 < self.menu.items.len() {
@@ -1821,11 +1766,11 @@ impl GameState {
                                 }
                                 continue;
                             }
-                            self.font.execute(|font| {
-                                let style = FontStyle::new(*text_size, *text_c);
-                                *text_image = Some(font.render(current_text, &style)?);
-                                Ok(())
-                            })?;
+                            //self.font.execute(|font| {
+                            //    let style = FontStyle::new(*text_size, *text_c);
+                            //    *text_image = Some(font.render(current_text, &style)?);
+                            //    Ok(())
+                            //})?;
                         }
                     }
                     MenuItemType::Pause { timer, length } => {
@@ -1841,25 +1786,24 @@ impl GameState {
                     }
                     MenuItemType::InstantText {
                         text,
-                        text_image,
                         text_size,
                         text_color,
                     } => {
-                        if text_image.is_none() {
-                            self.font.execute(|f| {
-                                let style = FontStyle::new(*text_size, *text_color);
-                                *text_image = Some(f.render(text, &style)?);
-                                Ok(())
-                            })?;
+                        //if text_image.is_none() {
+                        //    self.font.execute(|f| {
+                        //        let style = FontStyle::new(*text_size, *text_color);
+                        //        *text_image = Some(f.render(text, &style)?);
+                        //        Ok(())
+                        //    })?;
+                        //}
+                        //if text_image.is_some() {
+                        mi.is_loaded = true;
+                        if i + 1 < self.menu.items.len() {
+                            self.menu.items[i + 1].is_loaded = false;
+                        } else {
+                            self.current_finished = true;
                         }
-                        if text_image.is_some() {
-                            mi.is_loaded = true;
-                            if i + 1 < self.menu.items.len() {
-                                self.menu.items[i + 1].is_loaded = false;
-                            } else {
-                                self.current_finished = true;
-                            }
-                        }
+                        //}
                     }
                 }
             }
@@ -1888,12 +1832,12 @@ impl GameState {
                     if *timer <= 0.0 {
                         self.save_load_notification = None;
                     } else if text.is_none() {
-                        self.font.execute(|f| {
-                            *text = Some(
-                                f.render("Saved the Game", &FontStyle::new(45.0, Color::WHITE))?,
-                            );
-                            Ok(())
-                        })?;
+                        //self.font.execute(|f| {
+                        //    *text = Some(
+                        //        f.render("Saved the Game", &FontStyle::new(45.0, Color::WHITE))?,
+                        //    );
+                        //    Ok(())
+                        //})?;
                     }
                 }
                 SaveLoadNotification::Load { text, timer } => {
@@ -1901,12 +1845,12 @@ impl GameState {
                     if *timer <= 0.0 {
                         self.save_load_notification = None;
                     } else if text.is_none() {
-                        self.font.execute(|f| {
-                            *text = Some(
-                                f.render("Loaded the Game", &FontStyle::new(45.0, Color::WHITE))?,
-                            );
-                            Ok(())
-                        })?;
+                        //self.font.execute(|f| {
+                        //    *text = Some(
+                        //        f.render("Loaded the Game", &FontStyle::new(45.0, Color::WHITE))?,
+                        //    );
+                        //    Ok(())
+                        //})?;
                     }
                 }
             }
@@ -1930,7 +1874,6 @@ impl GameState {
             match &mut mi.item_type {
                 MenuItemType::Button {
                     text,
-                    text_image,
                     text_c,
                     h_c,
                     c,
@@ -1940,38 +1883,41 @@ impl GameState {
                     } else {
                         window.get_gi_mut().draw_rect(rect, *c)?;
                     }
-                    if let Some(i) = text_image {
-                        let image = window.get_image_mut(&i)?;
-                        let mut image_rect = image.get_wh_rect();
-                        image_rect.x = mi.x + (mi.w - image_rect.w) / 2.0;
-                        image_rect.y = mi.y + (mi.h - image_rect.h) / 2.0;
-                        image.draw(image_rect.x, image_rect.y, Color::WHITE)?;
-                    }
+                    window.get_font_mut(&self.font)?.draw(
+                        text,
+                        rect.h.round() as u32,
+                        rect.x,
+                        rect.y,
+                        *text_c,
+                    )?;
                 }
                 MenuItemType::AppearingText {
                     text,
-                    text_image,
                     current_text,
                     text_size,
                     text_c,
                     timer,
                 } => {
-                    if let Some(i) = text_image {
-                        let image = window.get_image_mut(&i)?;
-                        image.draw(mi.x, mi.y, Color::WHITE)?;
-                    }
+                    window.get_font_mut(&self.font)?.draw(
+                        text,
+                        text_size.round() as u32,
+                        rect.x,
+                        rect.y,
+                        *text_c,
+                    )?;
                 }
                 MenuItemType::InstantText {
                     text,
-                    text_image,
                     text_size,
                     text_color,
                 } => {
-                    if let Some(i) = text_image {
-                        let image = window.get_image_mut(&i)?;
-                        let mut image_rect = image.get_wh_rect();
-                        image.draw(mi.x, mi.y, Color::WHITE)?;
-                    }
+                    window.get_font_mut(&self.font)?.draw(
+                        text,
+                        text_size.round() as u32,
+                        rect.x,
+                        rect.y,
+                        *text_color,
+                    )?;
                 }
                 MenuItemType::Pause { timer, length } => (),
             }

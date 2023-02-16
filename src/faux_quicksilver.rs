@@ -143,19 +143,19 @@ impl Vector {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Transform {
     pub mat: [f32; 9],
-    translate: Vector,
-    rotate: f32,
+    //translate: Vector,
+    //rotate: f32,
 }
 
 impl Default for Transform {
     fn default() -> Self {
         Self {
             mat: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
-            translate: Vector { x: 0.0, y: 0.0 },
-            rotate: 0.0,
+            //translate: Vector { x: 0.0, y: 0.0 },
+            //rotate: 0.0,
         }
     }
 }
@@ -187,14 +187,16 @@ impl Mul<Transform> for Transform {
                 self.mat[6] * rhs.mat[1] + self.mat[7] * rhs.mat[4] + self.mat[8] * rhs.mat[7],
                 self.mat[6] * rhs.mat[2] + self.mat[7] * rhs.mat[5] + self.mat[8] * rhs.mat[8],
             ],
-            translate: self.translate + rhs.translate,
-            rotate: self.rotate + rhs.rotate,
+            //translate: self.translate + rhs.translate,
+            //rotate: self.rotate + rhs.rotate,
         }
     }
 }
 
 impl Transform {
-    pub const IDENTITY: Self = Self::default();
+    pub const IDENTITY: Self = Self {
+        mat: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+    };
 
     pub fn rotate(rot: f32) -> Self {
         Self {
@@ -209,7 +211,7 @@ impl Transform {
                 0.0,
                 1.0,
             ],
-            rotate: rot,
+            //rotate: rot,
             ..Default::default()
         }
     }
@@ -217,18 +219,18 @@ impl Transform {
     pub fn translate(x: f32, y: f32) -> Self {
         Self {
             mat: [1.0, 0.0, x, 0.0, 1.0, y, 0.0, 0.0, 1.0],
-            translate: Vector { x, y },
+            //translate: Vector { x, y },
             ..Default::default()
         }
     }
 
-    pub fn get_translate(&self) -> Vector {
-        self.translate
-    }
+    //pub fn get_translate(&self) -> Vector {
+    //    self.translate
+    //}
 
-    pub fn get_rotation(&self) -> f32 {
-        self.rotate
-    }
+    //pub fn get_rotation(&self) -> f32 {
+    //    self.rotate
+    //}
 }
 
 pub struct Window {
@@ -290,7 +292,7 @@ impl Window {
             .as_ref())
     }
 
-    pub fn get_image_mut(&self, name: &str) -> Result<&mut dyn ImageInterface, String> {
+    pub fn get_image_mut(&mut self, name: &str) -> Result<&mut dyn ImageInterface, String> {
         Ok(self
             .images
             .get_mut(name)
@@ -306,7 +308,7 @@ impl Window {
             .as_ref())
     }
 
-    pub fn get_font_mut(&self, name: &str) -> Result<&mut dyn FontInterface, String> {
+    pub fn get_font_mut(&mut self, name: &str) -> Result<&mut dyn FontInterface, String> {
         Ok(self
             .fonts
             .get_mut(name)
@@ -322,7 +324,7 @@ impl Window {
             .as_ref())
     }
 
-    pub fn get_sound_mut(&self, name: &str) -> Result<&mut dyn SoundInterface, String> {
+    pub fn get_sound_mut(&mut self, name: &str) -> Result<&mut dyn SoundInterface, String> {
         Ok(self
             .sounds
             .get_mut(name)
@@ -338,7 +340,7 @@ impl Window {
             .as_ref())
     }
 
-    pub fn get_music_mut(&self, name: &str) -> Result<&mut dyn MusicInterface, String> {
+    pub fn get_music_mut(&mut self, name: &str) -> Result<&mut dyn MusicInterface, String> {
         Ok(self
             .music
             .get_mut(name)
@@ -346,7 +348,3 @@ impl Window {
             .as_mut())
     }
 }
-
-pub struct Key {}
-
-pub struct Event {}
