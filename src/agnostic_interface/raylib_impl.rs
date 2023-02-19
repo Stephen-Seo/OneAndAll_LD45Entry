@@ -15,6 +15,8 @@ use std::{
     rc::Rc,
 };
 
+use crate::faux_quicksilver::Vector;
+
 use super::{FontInterface, GameInterface, ImageInterface, MusicInterface, SoundInterface};
 
 fn fqcolor_to_color(c: crate::faux_quicksilver::Color) -> ffi::Color {
@@ -62,6 +64,7 @@ impl ImageInterface for RaylibImageHandler {
         y: f32,
         color: crate::faux_quicksilver::Color,
         transform: crate::faux_quicksilver::Transform,
+        origin: Vector,
     ) -> Result<(), String> {
         todo!()
     }
@@ -73,6 +76,7 @@ impl ImageInterface for RaylibImageHandler {
         y: f32,
         color: crate::faux_quicksilver::Color,
         transform: crate::faux_quicksilver::Transform,
+        origin: Vector,
     ) -> Result<(), String> {
         todo!()
     }
@@ -328,6 +332,7 @@ impl GameInterface for RaylibGame {
         circle: crate::faux_quicksilver::Circle,
         color: crate::faux_quicksilver::Color,
         transform: crate::faux_quicksilver::Transform,
+        origin: Vector,
     ) -> Result<(), String> {
         todo!()
     }
@@ -364,6 +369,7 @@ impl GameInterface for RaylibGame {
         rect: crate::faux_quicksilver::Rectangle,
         color: crate::faux_quicksilver::Color,
         transform: crate::faux_quicksilver::Transform,
+        origin: Vector,
     ) -> Result<(), String> {
         todo!()
     }

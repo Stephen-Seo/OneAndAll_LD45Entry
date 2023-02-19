@@ -14,6 +14,7 @@ pub trait ImageInterface {
         y: f32,
         color: Color,
         transform: Transform,
+        origin: Vector,
     ) -> Result<(), String>;
     fn draw_sub_transform(
         &mut self,
@@ -22,6 +23,7 @@ pub trait ImageInterface {
         y: f32,
         color: Color,
         transform: Transform,
+        origin: Vector,
     ) -> Result<(), String>;
     fn get_w(&self) -> usize;
     fn get_h(&self) -> usize;
@@ -76,6 +78,7 @@ pub trait GameInterface {
         circle: Circle,
         color: Color,
         transform: Transform,
+        origin: Vector,
     ) -> Result<(), String>;
     fn draw_rect(&mut self, rect: Rectangle, color: Color) -> Result<(), String>;
     fn draw_rect_ex(
@@ -90,6 +93,7 @@ pub trait GameInterface {
         rect: Rectangle,
         color: Color,
         transform: Transform,
+        origin: Vector,
     ) -> Result<(), String>;
 
     fn load_image(&mut self, path: &Path) -> Result<Box<dyn ImageInterface>, String>;

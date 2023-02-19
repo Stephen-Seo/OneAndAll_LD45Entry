@@ -643,12 +643,28 @@ impl ParticleSystem {
                         * Transform::rotate(particle.r);
                 window
                     .get_gi_mut()
-                    .draw_rect_transform(particle.rect, self.color, transform * pre_transform)
+                    .draw_rect_transform(
+                        particle.rect,
+                        self.color,
+                        transform * pre_transform,
+                        Vector {
+                            x: particle.rect.x + particle.rect.w / 2.0,
+                            y: particle.rect.y + particle.rect.h / 2.0,
+                        },
+                    )
                     .ok();
             } else {
                 window
                     .get_gi_mut()
-                    .draw_circle_transform(particle.circle, self.color, transform)
+                    .draw_circle_transform(
+                        particle.circle,
+                        self.color,
+                        transform,
+                        Vector {
+                            x: particle.circle.x,
+                            y: particle.circle.y,
+                        },
+                    )
                     .ok();
             }
         }
@@ -761,6 +777,10 @@ impl RotatingParticleSystem {
                     transform
                         * Transform::translate(-moved_rect.x / 2.0, -moved_rect.y / 2.0)
                         * Transform::rotate(self.r * 1.3),
+                    Vector {
+                        x: moved_rect.x + moved_rect.w / 2.0,
+                        y: moved_rect.y + moved_rect.h / 2.0,
+                    },
                 )
                 .ok();
         } else {
@@ -770,7 +790,15 @@ impl RotatingParticleSystem {
             solid_color.a = (self.particle_system.opacity * 255.0) as u8;
             window
                 .get_gi_mut()
-                .draw_circle_transform(moved_cir, solid_color, transform)
+                .draw_circle_transform(
+                    moved_cir,
+                    solid_color,
+                    transform,
+                    Vector {
+                        x: moved_cir.x,
+                        y: moved_cir.y,
+                    },
+                )
                 .ok();
         }
     }
@@ -856,7 +884,15 @@ impl ExplConvParticleSystem {
                 * 255.0) as u8;
             window
                 .get_gi_mut()
-                .draw_circle_transform(particle.circle, self.color, transform)
+                .draw_circle_transform(
+                    particle.circle,
+                    self.color,
+                    transform,
+                    Vector {
+                        x: particle.circle.x,
+                        y: particle.circle.y,
+                    },
+                )
                 .ok();
         }
     }
@@ -932,7 +968,15 @@ impl Planet {
         self.particle_system.draw(window, transform);
         window
             .get_gi_mut()
-            .draw_circle_transform(self.circle, self.color, transform)
+            .draw_circle_transform(
+                self.circle,
+                self.color,
+                transform,
+                Vector {
+                    x: self.circle.x,
+                    y: self.circle.y,
+                },
+            )
             .ok();
         for moon in &mut self.moons {
             moon.draw(window, transform);
@@ -999,6 +1043,10 @@ impl Star {
                 image_rect.y,
                 self.color,
                 transform * Transform::rotate(self.r),
+                Vector {
+                    x: image_rect.x + image_rect.w / 2.0,
+                    y: image_rect.y + image_rect.h / 2.0,
+                },
             )
             .ok();
     }
@@ -1108,6 +1156,10 @@ impl Fish {
                 body_rect.y,
                 self.color,
                 transform * body_tr,
+                Vector {
+                    x: self.body_rect.x + self.body_rect.w / 2.0,
+                    y: self.body_rect.y + self.body_rect.h / 2.0,
+                },
             )
             .ok();
         let mut tail_rect = self.tail_rect;
@@ -1128,6 +1180,10 @@ impl Fish {
                 tail_rect.y,
                 self.color,
                 transform * tail_tr,
+                Vector {
+                    x: self.tail_rect.x + self.tail_rect.w / 2.0,
+                    y: self.tail_rect.y + self.tail_rect.h / 2.0,
+                },
             )
             .ok();
     }
@@ -1914,6 +1970,10 @@ impl GameState {
             Color::from_rgba(255, 255, 255, (self.player_particles.opacity * 255.0) as u8),
             Transform::translate(-self.player.x / 2.0, -self.player.y / 2.0)
                 * Transform::rotate(self.player_r as f32),
+            Vector {
+                x: self.player.x + self.player.w / 2.0,
+                y: self.player.y + self.player.h / 2.0,
+            },
         )?;
         self.joining_particles.draw(window, Transform::IDENTITY);
         for expl_conv_ps in &mut self.expl_conv_p_systems {
