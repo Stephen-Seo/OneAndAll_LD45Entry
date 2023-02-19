@@ -41,6 +41,7 @@ pub trait MusicInterface {
     fn pause(&mut self) -> Result<(), String>;
     fn stop(&mut self) -> Result<(), String>;
     fn set_loop(&mut self, loop_enable: bool) -> Result<(), String>;
+    fn update(&mut self) -> Result<(), String>;
 }
 
 pub trait CameraInterface {

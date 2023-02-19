@@ -9,8 +9,7 @@ fn linking_raylib() {
 }
 
 #[cfg(feature = "no_link_raylib")]
-fn linking_raylib() {
-}
+fn linking_raylib() {}
 
 fn main() {
     linking_raylib();
