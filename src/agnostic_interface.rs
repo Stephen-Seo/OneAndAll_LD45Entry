@@ -1,3 +1,5 @@
+pub mod raylib_impl;
+
 use std::path::Path;
 
 use crate::faux_quicksilver::{Circle, Color, Rectangle, Transform, Vector};

@@ -10,3 +10,10 @@ edition = "2018"
 #quicksilver = { version = "0.3.19", default-features = false, features = [ "fonts", "saving", "sounds" ] }
 rand = "0.7.2"
 serde = { version = "1.0.101", features = ["derive"] }
+
+[build-dependencies]
+bindgen = "0.64"
+
+[features]
+default = []
+no_link_raylib  = []
