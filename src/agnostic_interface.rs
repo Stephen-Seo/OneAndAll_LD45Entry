@@ -6,8 +6,12 @@ use crate::faux_quicksilver::{Circle, Color, Rectangle, Transform, Vector};
 
 pub trait ImageInterface {
     fn draw(&mut self, x: f32, y: f32, color: Color) -> Result<(), String>;
-    fn draw_sub(&mut self, sub_rect: Rectangle, x: f32, y: f32, color: Color)
-        -> Result<(), String>;
+    fn draw_sub(
+        &mut self,
+        sub_rect: Rectangle,
+        dest_rect: Rectangle,
+        color: Color,
+    ) -> Result<(), String>;
     fn draw_transform(
         &mut self,
         x: f32,
@@ -19,8 +23,7 @@ pub trait ImageInterface {
     fn draw_sub_transform(
         &mut self,
         sub_rect: Rectangle,
-        x: f32,
-        y: f32,
+        dest_rect: Rectangle,
         color: Color,
         transform: Transform,
         origin: Vector,
@@ -66,13 +69,6 @@ pub trait GameInterface {
     fn end_drawing(&mut self) -> Result<(), String>;
 
     fn draw_circle(&mut self, circle: Circle, color: Color) -> Result<(), String>;
-    fn draw_circle_ex(
-        &mut self,
-        circle: Circle,
-        color: Color,
-        origin: Vector,
-        rot: f32,
-    ) -> Result<(), String>;
     fn draw_circle_transform(
         &mut self,
         circle: Circle,

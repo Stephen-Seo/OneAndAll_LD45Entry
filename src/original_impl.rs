@@ -1152,8 +1152,7 @@ impl Fish {
         fish_img
             .draw_sub_transform(
                 self.body_rect,
-                body_rect.x,
-                body_rect.y,
+                body_rect,
                 self.color,
                 transform * body_tr,
                 Vector {
@@ -1176,8 +1175,7 @@ impl Fish {
         fish_img
             .draw_sub_transform(
                 self.tail_rect,
-                tail_rect.x,
-                tail_rect.y,
+                tail_rect,
                 self.color,
                 transform * tail_tr,
                 Vector {

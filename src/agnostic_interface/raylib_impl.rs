@@ -28,14 +28,40 @@ fn fqcolor_to_color(c: crate::faux_quicksilver::Color) -> ffi::Color {
     }
 }
 
+fn fqrect_to_rect(r: crate::faux_quicksilver::Rectangle) -> ffi::Rectangle {
+    ffi::Rectangle {
+        x: r.x,
+        y: r.y,
+        width: r.w,
+        height: r.h,
+    }
+}
+
+fn fqvector_to_vector2(v: crate::faux_quicksilver::Vector) -> ffi::Vector2 {
+    ffi::Vector2 { x: v.x, y: v.y }
+}
+
 #[derive(Clone, Debug)]
 struct RaylibImage {
     image: ffi::Image,
+    texture: Option<ffi::Texture>,
 }
 
 #[derive(Clone, Debug)]
 struct RaylibImageHandler {
-    image: Rc<RaylibImage>,
+    image: Rc<RefCell<RaylibImage>>,
+}
+
+impl RaylibImageHandler {
+    fn image_to_texture(&mut self) -> Result<(), String> {
+        if self.image.borrow().texture.is_none() {
+            unsafe {
+                self.image.borrow_mut().texture =
+                    Some(ffi::LoadTextureFromImage(self.image.borrow().image));
+            }
+        }
+        Ok(())
+    }
 }
 
 impl ImageInterface for RaylibImageHandler {
@@ -45,17 +71,46 @@ impl ImageInterface for RaylibImageHandler {
         y: f32,
         color: crate::faux_quicksilver::Color,
     ) -> Result<(), String> {
-        todo!()
+        self.image_to_texture()?;
+        unsafe {
+            ffi::DrawTexture(
+                *self
+                    .image
+                    .borrow()
+                    .texture
+                    .as_ref()
+                    .ok_or_else(|| String::from("RaylibImage has no Texture!"))?,
+                x.round() as i32,
+                y.round() as i32,
+                fqcolor_to_color(color),
+            );
+        }
+        Ok(())
     }
 
     fn draw_sub(
         &mut self,
         sub_rect: crate::faux_quicksilver::Rectangle,
-        x: f32,
-        y: f32,
+        dest_rect: crate::faux_quicksilver::Rectangle,
         color: crate::faux_quicksilver::Color,
     ) -> Result<(), String> {
-        todo!()
+        self.image_to_texture()?;
+        unsafe {
+            ffi::DrawTexturePro(
+                *self
+                    .image
+                    .borrow()
+                    .texture
+                    .as_ref()
+                    .ok_or_else(|| String::from("RaylibImage has no Texture!"))?,
+                fqrect_to_rect(sub_rect),
+                fqrect_to_rect(dest_rect),
+                ffi::Vector2 { x: 0.0, y: 0.0 },
+                0.0,
+                fqcolor_to_color(color),
+            );
+        }
+        Ok(())
     }
 
     fn draw_transform(
@@ -72,8 +127,7 @@ impl ImageInterface for RaylibImageHandler {
     fn draw_sub_transform(
         &mut self,
         sub_rect: crate::faux_quicksilver::Rectangle,
-        x: f32,
-        y: f32,
+        dest_rect: crate::faux_quicksilver::Rectangle,
         color: crate::faux_quicksilver::Color,
         transform: crate::faux_quicksilver::Transform,
         origin: Vector,
@@ -82,15 +136,20 @@ impl ImageInterface for RaylibImageHandler {
     }
 
     fn get_w(&self) -> usize {
-        todo!()
+        self.image.borrow().image.width as usize
     }
 
     fn get_h(&self) -> usize {
-        todo!()
+        self.image.borrow().image.height as usize
     }
 
     fn get_wh_rect(&self) -> crate::faux_quicksilver::Rectangle {
-        todo!()
+        crate::faux_quicksilver::Rectangle {
+            x: 0.0,
+            y: 0.0,
+            w: self.image.borrow().image.width as f32,
+            h: self.image.borrow().image.height as f32,
+        }
     }
 }
 
@@ -113,7 +172,18 @@ impl FontInterface for RaylibFontHandler {
         y: f32,
         color: crate::faux_quicksilver::Color,
     ) -> Result<(), String> {
-        todo!()
+        unsafe {
+            let cstring = CString::from_vec_unchecked(s.as_bytes().into());
+            ffi::DrawTextEx(
+                self.font.font,
+                cstring.as_ptr(),
+                ffi::Vector2 { x, y },
+                size as f32,
+                (size / 10) as f32,
+                fqcolor_to_color(color),
+            );
+        }
+        Ok(())
     }
 }
 
@@ -189,7 +259,7 @@ impl MusicInterface for RaylibMusicHandler {
 }
 
 struct RaylibGame {
-    images: HashMap<String, Rc<RaylibImage>>,
+    images: HashMap<String, Rc<RefCell<RaylibImage>>>,
     fonts: HashMap<String, Rc<RaylibFont>>,
     sounds: HashMap<String, Rc<RaylibSound>>,
     music: HashMap<String, Rc<RefCell<RaylibMusic>>>,
@@ -218,7 +288,10 @@ impl Drop for RaylibGame {
     fn drop(&mut self) {
         unsafe {
             for (_, image) in &self.images {
-                ffi::UnloadImage(image.image);
+                if let Some(texture) = image.borrow_mut().texture.take() {
+                    ffi::UnloadTexture(texture);
+                }
+                ffi::UnloadImage(image.borrow().image);
             }
             for (_, font) in &self.fonts {
                 ffi::UnloadFont(font.font);
@@ -317,16 +390,6 @@ impl GameInterface for RaylibGame {
         Ok(())
     }
 
-    fn draw_circle_ex(
-        &mut self,
-        circle: crate::faux_quicksilver::Circle,
-        color: crate::faux_quicksilver::Color,
-        origin: crate::faux_quicksilver::Vector,
-        rot: f32,
-    ) -> Result<(), String> {
-        todo!()
-    }
-
     fn draw_circle_transform(
         &mut self,
         circle: crate::faux_quicksilver::Circle,
@@ -361,7 +424,15 @@ impl GameInterface for RaylibGame {
         origin: crate::faux_quicksilver::Vector,
         rot: f32,
     ) -> Result<(), String> {
-        todo!()
+        unsafe {
+            ffi::DrawRectanglePro(
+                fqrect_to_rect(rect),
+                fqvector_to_vector2(origin),
+                rot,
+                fqcolor_to_color(color),
+            );
+        }
+        Ok(())
     }
 
     fn draw_rect_transform(
@@ -386,7 +457,10 @@ impl GameInterface for RaylibGame {
             let cstring: CString = CString::from_vec_unchecked(path_buf);
             let image = ffi::LoadImage(cstring.as_ptr());
             let raylib_image_handler = RaylibImageHandler {
-                image: Rc::new(RaylibImage { image }),
+                image: Rc::new(RefCell::new(RaylibImage {
+                    image,
+                    texture: None,
+                })),
             };
             self.images
                 .insert(path_str.to_owned(), raylib_image_handler.image.clone());
