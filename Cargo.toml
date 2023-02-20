@@ -16,4 +16,4 @@ bindgen = "0.64"
 
 [features]
 default = []
-no_link_raylib  = []
+no_link_libs  = []

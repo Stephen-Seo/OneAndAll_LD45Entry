@@ -146,16 +146,12 @@ impl Vector {
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Transform {
     pub mat: [f32; 9],
-    //translate: Vector,
-    //rotate: f32,
 }
 
 impl Default for Transform {
     fn default() -> Self {
         Self {
             mat: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
-            //translate: Vector { x: 0.0, y: 0.0 },
-            //rotate: 0.0,
         }
     }
 }
@@ -187,8 +183,6 @@ impl Mul<Transform> for Transform {
                 self.mat[6] * rhs.mat[1] + self.mat[7] * rhs.mat[4] + self.mat[8] * rhs.mat[7],
                 self.mat[6] * rhs.mat[2] + self.mat[7] * rhs.mat[5] + self.mat[8] * rhs.mat[8],
             ],
-            //translate: self.translate + rhs.translate,
-            //rotate: self.rotate + rhs.rotate,
         }
     }
 }
@@ -211,26 +205,14 @@ impl Transform {
                 0.0,
                 1.0,
             ],
-            //rotate: rot,
-            ..Default::default()
         }
     }
 
     pub fn translate(x: f32, y: f32) -> Self {
         Self {
             mat: [1.0, 0.0, x, 0.0, 1.0, y, 0.0, 0.0, 1.0],
-            //translate: Vector { x, y },
-            ..Default::default()
         }
     }
-
-    //pub fn get_translate(&self) -> Vector {
-    //    self.translate
-    //}
-
-    //pub fn get_rotation(&self) -> f32 {
-    //    self.rotate
-    //}
 }
 
 pub struct Window {

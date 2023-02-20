@@ -1,6 +1,7 @@
 mod agnostic_interface;
 mod faux_quicksilver;
 mod original_impl;
+mod shaders;
 
 fn main() {
     // TODO

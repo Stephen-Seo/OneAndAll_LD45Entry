@@ -12,12 +12,18 @@ use std::{
     collections::HashMap,
     ffi::CString,
     os::raw::{c_char, c_int},
+    path::Path,
     rc::Rc,
 };
 
-use crate::faux_quicksilver::Vector;
+use crate::{
+    faux_quicksilver::{Transform, Vector},
+    shaders::{get_attrib_location, set_origin_2f, set_transform_3f},
+};
 
-use super::{FontInterface, GameInterface, ImageInterface, MusicInterface, SoundInterface};
+use super::{
+    FontInterface, GameInterface, ImageInterface, MusicInterface, ShaderInterface, SoundInterface,
+};
 
 fn fqcolor_to_color(c: crate::faux_quicksilver::Color) -> ffi::Color {
     ffi::Color {
@@ -39,6 +45,78 @@ fn fqrect_to_rect(r: crate::faux_quicksilver::Rectangle) -> ffi::Rectangle {
 
 fn fqvector_to_vector2(v: crate::faux_quicksilver::Vector) -> ffi::Vector2 {
     ffi::Vector2 { x: v.x, y: v.y }
+}
+
+#[derive(Clone, Debug)]
+pub struct RaylibShader {
+    shader: ffi::Shader,
+}
+
+impl RaylibShader {
+    pub fn get_shader_id(&self) -> ::std::os::raw::c_uint {
+        self.shader.id as ::std::os::raw::c_uint
+    }
+}
+
+#[derive(Clone, Debug)]
+struct RaylibShaderHandler {
+    shader: Rc<RefCell<RaylibShader>>,
+}
+
+impl ShaderInterface for RaylibShaderHandler {
+    fn set_transform_attrib(&mut self, transform: Transform) -> Result<(), String> {
+        let transform_cstr = CString::new("transform")
+            .map_err(|_| String::from("Failed to create \"transform\" CString!"))?;
+        let attr_loc = get_attrib_location(&self.shader.borrow(), &transform_cstr);
+        set_transform_3f(attr_loc, transform);
+        Ok(())
+    }
+
+    fn begin_draw_shader(&self) -> Result<(), String> {
+        unsafe {
+            ffi::BeginShaderMode(self.shader.borrow().shader);
+        }
+        Ok(())
+    }
+
+    fn end_draw_shader(&self) -> Result<(), String> {
+        unsafe {
+            ffi::EndShaderMode();
+        }
+        Ok(())
+    }
+
+    fn set_origin_attrib(&mut self, origin: Vector) -> Result<(), String> {
+        let origin_cstr = CString::new("origin")
+            .map_err(|_| String::from("Failed to create \"origin\" CString!"))?;
+        let attr_loc = get_attrib_location(&self.shader.borrow(), &origin_cstr);
+        set_origin_2f(attr_loc, origin);
+        Ok(())
+    }
+}
+
+impl RaylibShaderHandler {
+    pub fn load_shader(vs: &Path, fs: &Path) -> Result<Self, String> {
+        unsafe {
+            let vs_cstr: CString = CString::from_vec_unchecked(
+                vs.to_str()
+                    .ok_or_else(|| format!("Cannot convert path \"{vs:?}\" to str!"))?
+                    .as_bytes()
+                    .to_owned(),
+            );
+            let fs_cstr: CString = CString::from_vec_unchecked(
+                fs.to_str()
+                    .ok_or_else(|| format!("Cannot convert path \"{fs:?}\" to str!"))?
+                    .as_bytes()
+                    .to_owned(),
+            );
+            Ok(Self {
+                shader: Rc::new(RefCell::new(RaylibShader {
+                    shader: ffi::LoadShader(vs_cstr.as_ptr(), fs_cstr.as_ptr()),
+                })),
+            })
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -263,6 +341,7 @@ struct RaylibGame {
     fonts: HashMap<String, Rc<RaylibFont>>,
     sounds: HashMap<String, Rc<RaylibSound>>,
     music: HashMap<String, Rc<RefCell<RaylibMusic>>>,
+    shaders: HashMap<String, Rc<RefCell<RaylibShader>>>,
 }
 
 impl RaylibGame {
@@ -280,6 +359,7 @@ impl RaylibGame {
             fonts: HashMap::new(),
             sounds: HashMap::new(),
             music: HashMap::new(),
+            shaders: HashMap::new(),
         })
     }
 }
@@ -287,6 +367,9 @@ impl RaylibGame {
 impl Drop for RaylibGame {
     fn drop(&mut self) {
         unsafe {
+            for (_, shader) in &self.shaders {
+                ffi::UnloadShader(shader.borrow().shader);
+            }
             for (_, image) in &self.images {
                 if let Some(texture) = image.borrow_mut().texture.take() {
                     ffi::UnloadTexture(texture);
@@ -526,6 +609,17 @@ impl GameInterface for RaylibGame {
                 .insert(path_str.to_owned(), raylib_music_handler.music.clone());
             Ok(Box::new(raylib_music_handler))
         }
+    }
+
+    fn load_shader(
+        &mut self,
+        name: String,
+        vs: &Path,
+        fs: &Path,
+    ) -> Result<Box<dyn ShaderInterface>, String> {
+        let raylib_shader = RaylibShaderHandler::load_shader(vs, fs)?;
+        self.shaders.insert(name, raylib_shader.shader.clone());
+        Ok(Box::new(raylib_shader))
     }
 
     fn get_camera(&mut self) -> Result<Box<dyn super::CameraInterface>, String> {
