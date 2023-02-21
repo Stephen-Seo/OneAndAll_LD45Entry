@@ -10,10 +10,10 @@ const HEIGHT_F: f32 = 600.0;
 const MUSIC2_LENGTH: f32 = 2.0 * 60.0 * 1000.0;
 const TEXT_RATE: f32 = 0.1;
 const PP_GEN_RATE: f32 = 0.075;
-const PARTICLE_RAND_VEL_RANGE: f32 = 0.2;
+const PARTICLE_RAND_VEL_RANGE: f32 = 80.0;
 const PARTICLE_RAND_VEL_DIST: f32 = 0.2828427; // dist where x and y = 0.2
-const PARTICLE_RAND_ROT_RANGE: f32 = 0.5;
-const JOINING_OPACITY_RATE: f32 = 0.00013;
+const PARTICLE_RAND_ROT_RANGE: f32 = 5.0;
+const JOINING_OPACITY_RATE: f32 = 0.13;
 const JOINING_FAR_DIST: f32 = 700.0;
 const JOINING_NEAR_DIST: f32 = 150.0;
 const DOUBLE_CLICK_TIME: f32 = 0.350;
@@ -747,7 +747,7 @@ impl RotatingParticleSystem {
             self.particle_system.update(dt);
             self.particle_system.host_circle = saved_cir;
         }
-        self.r += self.velr * dt as f32;
+        self.r += self.velr * dt as f32 * 10.0;
     }
 
     fn draw(&mut self, window: &mut Window, transform: Transform) {
@@ -767,12 +767,10 @@ impl RotatingParticleSystem {
                 .draw_rect_transform(
                     moved_rect,
                     solid_color,
-                    transform
-                        * Transform::translate(-moved_rect.x / 2.0, -moved_rect.y / 2.0)
-                        * Transform::rotate(self.r * 1.3),
+                    transform * Transform::rotate(self.r * 1.3),
                     Vector {
-                        x: moved_rect.x + moved_rect.w / 2.0,
-                        y: moved_rect.y + moved_rect.h / 2.0,
+                        x: moved_rect.x,
+                        y: moved_rect.y,
                     },
                 )
                 .ok();
@@ -1103,7 +1101,7 @@ impl Fish {
             FishState::Swim => {
                 self.swim_time = rand::thread_rng().gen_range(1.4, 2.3);
                 self.swim_timer = self.swim_time;
-                self.r = rand::thread_rng().gen_range(0.0, 360.0);
+                self.r = rand::thread_rng().gen_range(0.0, std::f32::consts::PI * 2.0);
                 self.anim_timer = rand::thread_rng().gen_range(0.6, 1.0);
                 self.anim_time = self.anim_timer;
                 self.swim_v = (self.anim_timer / 8.0) as f32;
@@ -1129,7 +1127,7 @@ impl Fish {
             self.anim_timer = self.anim_time;
         }
 
-        self.pos += Transform::rotate(self.r) * Vector::new(self.swim_v, 0.0) * dt as f32;
+        self.pos -= Transform::rotate(self.r) * Vector::new(self.swim_v, 0.0) * dt as f32 * 1000.0;
     }
 
     fn draw(&mut self, i_fish: &str, window: &mut Window, transform: Transform) {
@@ -1138,10 +1136,9 @@ impl Fish {
             .expect("\"fish\" Image should be loaded");
         let anim_angle = ((self.anim_timer / self.anim_time) * std::f32::consts::PI * 2.0).sin();
         let mut body_rect = self.body_rect;
-        body_rect.x = self.pos.x - body_rect.w / 2.0;
-        body_rect.y = self.pos.y - body_rect.h / 2.0;
-        let body_tr =
-            Transform::rotate(anim_angle as f32 * 30.0) * Transform::rotate(self.r + 180.0);
+        body_rect.x = self.pos.x - self.body_rect.w / 2.0;
+        body_rect.y = self.pos.y - self.body_rect.h / 2.0;
+        let body_tr = Transform::rotate(anim_angle as f32 + self.r);
         fish_img
             .draw_sub_transform(
                 self.body_rect,
@@ -1149,22 +1146,21 @@ impl Fish {
                 self.color,
                 transform * body_tr,
                 Vector {
-                    x: self.body_rect.x + self.body_rect.w / 2.0,
-                    y: self.body_rect.y + self.body_rect.h / 2.0,
+                    x: self.pos.x,
+                    y: self.pos.y,
                 },
             )
             .ok();
         let mut tail_rect = self.tail_rect;
-        tail_rect.x = self.pos.x - tail_rect.w / 2.0;
-        tail_rect.y = self.pos.y - tail_rect.h / 2.0;
+        tail_rect.x = self.pos.x + body_rect.w / 2.0;
+        tail_rect.y = self.pos.y - body_rect.h / 2.0;
         let anim_angle = ((self.anim_timer / self.anim_time) * std::f32::consts::PI * 2.0
             - std::f32::consts::PI / 3.0)
             .sin();
         let tail_tr = body_tr
-            * Transform::translate(body_rect.x / 1.5, 0.0)
-            * Transform::translate(-tail_rect.x / 2.0, 0.0)
-            * Transform::rotate(-anim_angle as f32 * 45.0)
-            * Transform::translate(tail_rect.x / 2.0, 0.0);
+            * Transform::translate(-body_rect.w / 2.0, 0.0)
+            * Transform::rotate(-anim_angle as f32)
+            * Transform::translate(body_rect.w / 2.0, 0.0);
         fish_img
             .draw_sub_transform(
                 self.tail_rect,
@@ -1172,8 +1168,8 @@ impl Fish {
                 self.color,
                 transform * tail_tr,
                 Vector {
-                    x: self.tail_rect.x + self.tail_rect.w / 2.0,
-                    y: self.tail_rect.y + self.tail_rect.h / 2.0,
+                    x: self.pos.x,
+                    y: self.pos.y,
                 },
             )
             .ok();

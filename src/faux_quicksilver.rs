@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::ops::{Add, AddAssign, Mul, Sub};
+use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -123,6 +123,13 @@ impl AddAssign<Vector> for Vector {
     fn add_assign(&mut self, rhs: Vector) {
         self.x += rhs.x;
         self.y += rhs.y;
+    }
+}
+
+impl SubAssign<Vector> for Vector {
+    fn sub_assign(&mut self, rhs: Vector) {
+        self.x -= rhs.x;
+        self.y -= rhs.y;
     }
 }
 
