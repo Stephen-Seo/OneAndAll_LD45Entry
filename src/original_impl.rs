@@ -1306,12 +1306,7 @@ impl GameState {
         )?;
 
         let mut camera = window.get_gi_mut().get_default_camera()?;
-        camera.set_view(Rectangle {
-            x: 0.0,
-            y: 0.0,
-            w: WIDTH_F,
-            h: HEIGHT_F,
-        })?;
+        camera.set_view_xy(0.0, 0.0)?;
         Ok(Self {
             s_boom,
             s_get,

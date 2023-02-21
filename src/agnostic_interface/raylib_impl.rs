@@ -555,6 +555,16 @@ struct RaylibGame {
 }
 
 impl RaylibGame {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn native_setup() {
+        unsafe {
+            ffi::SetTargetFPS(60);
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn native_setup() {}
+
     pub fn new_boxed(width: u32, height: u32) -> Box<dyn GameInterface> {
         unsafe {
             let string = "One and All LD45\0";
@@ -564,6 +574,7 @@ impl RaylibGame {
                 string.as_ptr() as *const c_char,
             );
         }
+        Self::native_setup();
         let mut self_unboxed = Self {
             images: HashMap::new(),
             fonts: HashMap::new(),
