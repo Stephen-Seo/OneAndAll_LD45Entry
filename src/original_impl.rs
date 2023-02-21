@@ -137,28 +137,21 @@ impl Menu {
                 Menu::instant_text(
                     70.0,
                     50.0,
-                    55.0,
+                    45.0,
                     true,
                     "One And All - A Ludum Dare 45 Entry",
                 ),
                 Menu::instant_text(
                     25.0,
                     HEIGHT_F - 100.0,
-                    30.0,
+                    27.0,
                     true,
-                    "Made with quicksilver which is licensed with either",
-                ),
-                Menu::instant_text(
-                    70.0,
-                    HEIGHT_F - 80.0,
-                    30.0,
-                    true,
-                    "MIT License or Apache License Version 2.0",
+                    "Made with Raylib which is licensed with the zlib license",
                 ),
                 Menu::instant_text(
                     25.0,
                     HEIGHT_F - 50.0,
-                    30.0,
+                    27.0,
                     true,
                     "Uses Clear-Sans which is licensed with Apache License Version 2.0",
                 ),
@@ -639,7 +632,7 @@ impl ParticleSystem {
                 * 255.0) as u8;
             if particle.is_rect {
                 let pre_transform =
-                    Transform::translate(-particle.rect.x / 2.0, -particle.rect.y / 2.0)
+                    Transform::translate(particle.rect.w / 2.0, particle.rect.h / 2.0)
                         * Transform::rotate(particle.r);
                 window
                     .get_gi_mut()
@@ -1398,6 +1391,7 @@ impl GameState {
         } else if window.get_gi_mut().get_mouse_pressed()?.is_some() {
             if self.current_finished {
                 if self.is_create_mode {
+                    let click_pos = window.get_gi().vec_to_world(self.mouse_pos)?;
                     if self.click_release_time < DOUBLE_CLICK_TIME {
                         self.click_release_time = DOUBLE_CLICK_TIME;
                         self.dbl_click_timeout = Some(0.0);
@@ -1405,7 +1399,7 @@ impl GameState {
                         if self.state == 8 {
                             let mut expl_conv_system = ExplConvParticleSystem::new(
                                 1.5,
-                                Circle::new(self.mouse_pos.x, self.mouse_pos.y, 20.0),
+                                Circle::new(click_pos.x, click_pos.y, 20.0),
                                 Color::from_rgba(0x99, 0xFF, 0x99, 255),
                                 1.0,
                             );
@@ -1422,8 +1416,8 @@ impl GameState {
                                 let mut expl_conv_system = ExplConvParticleSystem::new(
                                     rng.gen_range(1.2, 1.6),
                                     Circle::new(
-                                        self.mouse_pos.x,
-                                        self.mouse_pos.y,
+                                        click_pos.x,
+                                        click_pos.y,
                                         rng.gen_range(15.0, 25.0),
                                     ),
                                     Color::from_rgba(
@@ -1441,11 +1435,7 @@ impl GameState {
                                 // spawn star
                                 let rot_clockwise = rng.gen_bool(0.5);
                                 self.stars.push(Star::new(
-                                    Circle::new(
-                                        self.mouse_pos.x,
-                                        self.mouse_pos.y,
-                                        rng.gen_range(3.0, 7.0),
-                                    ),
+                                    Circle::new(click_pos.x, click_pos.y, rng.gen_range(3.0, 7.0)),
                                     Color::from_rgba(
                                         rng.gen_range(0x58, 0xFF),
                                         rng.gen_range(0x58, 0xFF),
@@ -1463,7 +1453,7 @@ impl GameState {
                                 // spawn fish
                                 for i in 0..rng.gen_range(1, 4) {
                                     self.fishes.push(Fish::new(
-                                        self.mouse_pos,
+                                        click_pos,
                                         rng.gen_range(0.0, 360.0),
                                         Color::from_rgba(
                                             rng.gen_range(0x44, 0xFF),
@@ -1478,7 +1468,7 @@ impl GameState {
                         }
                     } else if self.state == 10 {
                         self.click_time = Some(0.0);
-                        self.click_pos = self.mouse_pos;
+                        self.click_pos = click_pos;
                     }
                 } else if self.selection_mode {
                     if let Some(idx) = self.current_item {
@@ -1966,7 +1956,7 @@ impl GameState {
         window.get_gi_mut().draw_rect_transform(
             self.player,
             Color::from_rgba(255, 255, 255, (self.player_particles.opacity * 255.0) as u8),
-            Transform::translate(-self.player.x / 2.0, -self.player.y / 2.0)
+            Transform::translate(self.player.w / 2.0, self.player.h / 2.0)
                 * Transform::rotate(self.player_r as f32),
             Vector {
                 x: self.player.x + self.player.w / 2.0,
