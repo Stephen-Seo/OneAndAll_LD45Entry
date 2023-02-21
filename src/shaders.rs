@@ -28,13 +28,13 @@ pub fn get_attrib_location(raylib_shader: &RaylibShader, name: &CStr) -> ::std::
 
 pub fn set_transform_3f(index: ::std::os::raw::c_uint, transform: Transform) {
     // OpenGL stores matrix indices in column major order.
-    for idx in index..(index + 3) {
+    for (i, idx) in (index..(index + 3)).enumerate() {
         unsafe {
             glVertexAttrib3f(
                 idx,
-                transform.mat[0 + idx as usize],
-                transform.mat[3 + idx as usize],
-                transform.mat[6 + idx as usize],
+                transform.mat[0 + i as usize],
+                transform.mat[3 + i as usize],
+                transform.mat[6 + i as usize],
             );
         }
     }

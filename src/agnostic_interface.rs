@@ -66,9 +66,12 @@ pub trait GameInterface {
     fn get_dimensions(&self) -> Result<(f32, f32), String>;
     fn get_key_pressed(&mut self, key: char) -> Result<bool, String>;
     fn get_mouse_pressed(&mut self) -> Result<Option<(f32, f32)>, String>;
+    fn get_mouse_released(&mut self) -> Result<bool, String>;
     fn get_mouse_down(&mut self) -> Result<Option<(f32, f32)>, String>;
     fn get_mouse_xy(&self) -> Result<(f32, f32), String>;
     fn get_mouse_xy_vec(&self) -> Result<Vector, String>;
+    fn xy_to_world(&self, x: f32, y: f32) -> Result<Vector, String>;
+    fn vec_to_world(&self, vec: Vector) -> Result<Vector, String>;
     fn get_delta_time(&self) -> f32;
     fn clear_window(&mut self, color: Color) -> Result<(), String>;
     fn begin_drawing(&mut self) -> Result<(), String>;

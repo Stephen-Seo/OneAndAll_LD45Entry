@@ -335,4 +335,11 @@ impl Window {
             .ok_or_else(|| format!("Music \"{name}\" not found"))?
             .as_mut())
     }
+
+    pub fn update_music(&mut self) -> Result<(), String> {
+        for (_, music) in &mut self.music {
+            music.update()?;
+        }
+        Ok(())
+    }
 }

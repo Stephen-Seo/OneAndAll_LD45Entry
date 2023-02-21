@@ -22,5 +22,5 @@ void main() {
   fragColor = vertexColor;
 
   vec3 pos = transform * (vertexPosition - vec3(origin, 0.0)) + vec3(origin, 0.0);
-  gl_Position = mvp * vec4(pos - camera, 1.0);
+  gl_Position = mvp * vec4(pos - vec3(camera, 0.0), 1.0);
 }

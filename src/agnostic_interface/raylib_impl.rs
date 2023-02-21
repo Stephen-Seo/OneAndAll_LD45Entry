@@ -1,4 +1,4 @@
-mod ffi {
+pub mod ffi {
     #![allow(non_upper_case_globals)]
     #![allow(non_camel_case_types)]
     #![allow(non_snake_case)]
@@ -167,8 +167,8 @@ impl RaylibImageHandler {
     fn image_to_texture(&mut self) -> Result<(), String> {
         if self.image.borrow().texture.is_none() {
             unsafe {
-                self.image.borrow_mut().texture =
-                    Some(ffi::LoadTextureFromImage(self.image.borrow().image));
+                let texture = ffi::LoadTextureFromImage(self.image.borrow().image);
+                self.image.borrow_mut().texture = Some(texture);
             }
         }
         Ok(())
@@ -545,7 +545,7 @@ impl CameraInterface for Camera {
     }
 }
 
-struct RaylibGame {
+pub struct RaylibGame {
     images: HashMap<String, Rc<RefCell<RaylibImage>>>,
     fonts: HashMap<String, Rc<RaylibFont>>,
     sounds: HashMap<String, Rc<RaylibSound>>,
@@ -574,7 +574,12 @@ impl RaylibGame {
                 string.as_ptr() as *const c_char,
             );
         }
+
         Self::native_setup();
+        unsafe {
+            ffi::InitAudioDevice();
+        }
+
         let mut self_unboxed = Self {
             images: HashMap::new(),
             fonts: HashMap::new(),
@@ -634,6 +639,16 @@ impl GameInterface for RaylibGame {
                 Ok(Some((ffi::GetTouchX() as f32, ffi::GetTouchY() as f32)))
             } else {
                 Ok(None)
+            }
+        }
+    }
+
+    fn get_mouse_released(&mut self) -> Result<bool, String> {
+        unsafe {
+            if ffi::IsMouseButtonReleased(0) {
+                Ok(true)
+            } else {
+                Ok(false)
             }
         }
     }
@@ -1018,6 +1033,20 @@ impl GameInterface for RaylibGame {
     fn set_camera_xy(&mut self, x: f32, y: f32) -> Result<(), String> {
         self.camera.borrow_mut().pos = Vector { x, y };
         Ok(())
+    }
+
+    fn xy_to_world(&self, x: f32, y: f32) -> Result<Vector, String> {
+        Ok(Vector {
+            x: x + self.camera.borrow().pos.x,
+            y: y + self.camera.borrow().pos.y,
+        })
+    }
+
+    fn vec_to_world(&self, vec: Vector) -> Result<Vector, String> {
+        Ok(Vector {
+            x: vec.x + self.camera.borrow().pos.x,
+            y: vec.y + self.camera.borrow().pos.y,
+        })
     }
 }
 

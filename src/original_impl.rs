@@ -8,15 +8,15 @@ use serde::{Deserialize, Serialize};
 const WIDTH_F: f32 = 800.0;
 const HEIGHT_F: f32 = 600.0;
 const MUSIC2_LENGTH: f32 = 2.0 * 60.0 * 1000.0;
-const TEXT_RATE: f32 = 100.0;
-const PP_GEN_RATE: f32 = 75.0;
+const TEXT_RATE: f32 = 0.1;
+const PP_GEN_RATE: f32 = 0.075;
 const PARTICLE_RAND_VEL_RANGE: f32 = 0.2;
 const PARTICLE_RAND_VEL_DIST: f32 = 0.2828427; // dist where x and y = 0.2
 const PARTICLE_RAND_ROT_RANGE: f32 = 0.5;
 const JOINING_OPACITY_RATE: f32 = 0.00013;
 const JOINING_FAR_DIST: f32 = 700.0;
 const JOINING_NEAR_DIST: f32 = 150.0;
-const DOUBLE_CLICK_TIME: f32 = 350.0;
+const DOUBLE_CLICK_TIME: f32 = 0.350;
 const SL_NOTIF_TIME: f32 = 5000.0;
 const MAX_MOONS: usize = 5;
 
@@ -218,9 +218,9 @@ impl Menu {
     fn s_01() -> Menu {
         Menu {
             items: vec![
-                Menu::pause(500.0, true),
+                Menu::pause(0.500, true),
                 Menu::text(50.0, HEIGHT_F - 140.0, 40.0, false, "This is how it is."),
-                Menu::pause(500.0, false),
+                Menu::pause(0.500, false),
                 Menu::text(
                     50.0,
                     HEIGHT_F - 100.0,
@@ -228,9 +228,9 @@ impl Menu {
                     false,
                     "Nothing is, and everything is nothing.",
                 ),
-                Menu::pause(500.0, false),
+                Menu::pause(0.500, false),
                 Menu::text(50.0, HEIGHT_F - 60.0, 40.0, false, "...until you appeared."),
-                Menu::pause(100.0, false),
+                Menu::pause(0.100, false),
                 Menu::text(
                     570.0,
                     HEIGHT_F - 50.0,
@@ -252,7 +252,7 @@ impl Menu {
                     true,
                     "Just by being, you brought light into existence.",
                 ),
-                Menu::pause(500.0, false),
+                Menu::pause(0.500, false),
                 Menu::text(
                     50.0,
                     HEIGHT_F - 110.0,
@@ -260,7 +260,7 @@ impl Menu {
                     false,
                     "What brings you here? What drives you?",
                 ),
-                Menu::pause(500.0, false),
+                Menu::pause(0.500, false),
                 Menu::text(
                     50.0,
                     HEIGHT_F - 70.0,
@@ -327,7 +327,7 @@ impl Menu {
                     true,
                     "Hope... hope that your actions will inspire others..",
                 ),
-                Menu::pause(500.0, false),
+                Menu::pause(0.500, false),
                 Menu::text(
                     50.0,
                     HEIGHT_F - 130.0,
@@ -335,7 +335,7 @@ impl Menu {
                     false,
                     "Hope that a brighter future will come tomorrow...",
                 ),
-                Menu::pause(500.0, false),
+                Menu::pause(0.500, false),
                 Menu::text(
                     50.0,
                     HEIGHT_F - 90.0,
@@ -358,7 +358,7 @@ impl Menu {
                     true,
                     "Miracles huh?.. I see, then your appearance is special.",
                 ),
-                Menu::pause(500.0, false),
+                Menu::pause(0.500, false),
                 Menu::text(
                     30.0,
                     HEIGHT_F - 130.0,
@@ -366,7 +366,7 @@ impl Menu {
                     false,
                     "With your appearance, things may change for the better..",
                 ),
-                Menu::pause(500.0, false),
+                Menu::pause(0.500, false),
                 Menu::text(
                     30.0,
                     HEIGHT_F - 90.0,
@@ -389,7 +389,7 @@ impl Menu {
                     true,
                     "Kindness?.. I am in your debt.",
                 ),
-                Menu::pause(250.0, false),
+                Menu::pause(0.250, false),
                 Menu::text(
                     50.0,
                     HEIGHT_F - 130.0,
@@ -398,7 +398,7 @@ impl Menu {
                     "It has been a long time since I have encountered",
                 ),
                 Menu::text(50.0, HEIGHT_F - 90.0, 40.0, false, "another being..."),
-                Menu::pause(500.0, false),
+                Menu::pause(0.500, false),
                 Menu::text(270.0, HEIGHT_F - 90.0, 40.0, false, "... Thank you..."),
             ],
         }
@@ -415,7 +415,7 @@ impl Menu {
                     true,
                     "Determination.. I see...",
                 ),
-                Menu::pause(500.0, false),
+                Menu::pause(0.500, false),
                 Menu::text(
                     400.0,
                     HEIGHT_F - 170.0,
@@ -430,7 +430,7 @@ impl Menu {
                     false,
                     "must have been difficult to come here..",
                 ),
-                Menu::pause(500.0, false),
+                Menu::pause(0.500, false),
                 Menu::text(
                     50.0,
                     HEIGHT_F - 90.0,
@@ -459,7 +459,7 @@ impl Menu {
                     false,
                     "creation for all that will be.",
                 ),
-                Menu::pause(200.0, false),
+                Menu::pause(0.200, false),
                 Menu::text(
                     50.0,
                     HEIGHT_F - 50.0,
@@ -486,7 +486,7 @@ impl Menu {
     fn s_09() -> Menu {
         Menu {
             items: vec![
-                Menu::pause(400.0, true),
+                Menu::pause(0.400, true),
                 Menu::text(
                     50.0,
                     HEIGHT_F - 140.0,
@@ -494,7 +494,7 @@ impl Menu {
                     false,
                     "A new planet... It has most certainly been a while.",
                 ),
-                Menu::pause(500.0, false),
+                Menu::pause(0.500, false),
                 Menu::text(
                     50.0,
                     HEIGHT_F - 100.0,
@@ -502,7 +502,7 @@ impl Menu {
                     false,
                     "Please, go out and create the new universe, and again..",
                 ),
-                Menu::pause(300.0, false),
+                Menu::pause(0.300, false),
                 Menu::text(50.0, HEIGHT_F - 60.0, 40.0, false, "Thank you."),
             ],
         }
@@ -914,8 +914,8 @@ impl Planet {
             circle,
             color,
             particle_system: ParticleSystem::new(
-                rand::thread_rng().gen_range(2000.0, 3800.0),
-                900.0,
+                rand::thread_rng().gen_range(2.0, 3.8),
+                0.9,
                 Rectangle::new(0.0, 0.0, 1.0, 1.0),
                 circle,
                 false,
@@ -931,8 +931,8 @@ impl Planet {
         let clockwise = rand::thread_rng().gen_bool(0.5);
         for i in 0..rand::thread_rng().gen_range(0, MAX_MOONS) {
             planet.moons.push(RotatingParticleSystem::new(
-                rand::thread_rng().gen_range(1000.0, 2600.0),
-                600.0,
+                rand::thread_rng().gen_range(1.0, 2.6),
+                0.6,
                 Rectangle::new(0.0, 0.0, 1.0, 1.0),
                 smaller_circle,
                 false,
@@ -997,8 +997,8 @@ impl Star {
         let mut star = Star {
             color,
             particle_system: ParticleSystem::new(
-                rand::thread_rng().gen_range(80.0, 200.0),
-                850.0,
+                rand::thread_rng().gen_range(0.08, 0.2),
+                0.85,
                 Rectangle::new(0.0, 0.0, 1.0, 1.0),
                 circle,
                 false,
@@ -1073,12 +1073,12 @@ enum FishState {
 
 impl Fish {
     fn new(pos: Vector, r: f32, color: Color) -> Self {
-        let anim_timer = rand::thread_rng().gen_range(800.0, 1000.0);
+        let anim_timer = rand::thread_rng().gen_range(0.8, 1.0);
         Self {
             pos,
             r,
-            swim_time: 800.0,
-            swim_timer: 800.0,
+            swim_time: 0.8,
+            swim_timer: 0.8,
             swim_v: 0.2,
             anim_timer,
             anim_time: anim_timer,
@@ -1101,26 +1101,26 @@ impl Fish {
     fn set_next(&mut self, state: FishState) {
         match state {
             FishState::Idle => {
-                self.swim_time = rand::thread_rng().gen_range(1100.0, 2400.0);
+                self.swim_time = rand::thread_rng().gen_range(1.1, 2.4);
                 self.swim_timer = self.swim_time;
-                self.anim_timer = 1600.0;
-                self.anim_time = 1600.0;
+                self.anim_timer = 1.6;
+                self.anim_time = 1.6;
                 self.swim_v = 0.0;
             }
             FishState::Swim => {
-                self.swim_time = rand::thread_rng().gen_range(1400.0, 2300.0);
+                self.swim_time = rand::thread_rng().gen_range(1.4, 2.3);
                 self.swim_timer = self.swim_time;
                 self.r = rand::thread_rng().gen_range(0.0, 360.0);
-                self.anim_timer = rand::thread_rng().gen_range(600.0, 1000.0);
+                self.anim_timer = rand::thread_rng().gen_range(0.6, 1.0);
                 self.anim_time = self.anim_timer;
-                self.swim_v = (self.anim_timer / 8000.0) as f32;
+                self.swim_v = (self.anim_timer / 8.0) as f32;
             }
         }
     }
 
     fn update(&mut self, dt: f32) {
         self.swim_time -= dt;
-        if self.swim_time < 220.0 {
+        if self.swim_time < 0.22 {
             self.swim_v /= 1.1;
         }
         if self.swim_time <= 0.0 {
@@ -1201,7 +1201,7 @@ enum SaveLoadNotification {
     Load { text: Option<String>, timer: f32 },
 }
 
-struct GameState {
+pub struct GameState {
     s_boom: String,
     s_get: String,
     s_power_up: String,
@@ -1239,7 +1239,7 @@ struct GameState {
 }
 
 impl GameState {
-    fn new(window: &mut Window) -> Result<Self, String> {
+    pub fn new(window: &mut Window) -> Result<Self, String> {
         let s_boom = String::from("boom.mp3");
         window.load_sound(
             &PathBuf::from_str("static/boom.mp3")
@@ -1329,7 +1329,7 @@ impl GameState {
             player_r: 0.0,
             player_particles: ParticleSystem::new(
                 PP_GEN_RATE,
-                1000.0,
+                1.0,
                 Rectangle::new(400.0, 300.0, 32.0, 32.0),
                 Circle::new(100.0, 100.0, 32.0),
                 true,
@@ -1340,7 +1340,7 @@ impl GameState {
             ),
             joining_particles: RotatingParticleSystem::new(
                 PP_GEN_RATE,
-                1000.0,
+                1.0,
                 Rectangle::new(400.0, 300.0, 16.0, 16.0),
                 Circle::new(100.0, 100.0, 32.0),
                 true,
@@ -1368,12 +1368,13 @@ impl GameState {
         })
     }
 
-    fn update(&mut self, window: &mut Window) -> Result<(), String> {
+    pub fn update(&mut self, window: &mut Window) -> Result<(), String> {
         let dt = window.get_gi().get_delta_time();
 
         // check mouse pos
         {
             self.mouse_pos = window.get_gi().get_mouse_xy_vec()?;
+            //self.mouse_pos = window.get_gi().vec_to_world(self.mouse_pos)?;
             let mut hovered = false;
             for i in 0..self.menu.items.len() {
                 if self.menu.items[i].is_inside(self.mouse_pos.x, self.mouse_pos.y) {
@@ -1390,11 +1391,11 @@ impl GameState {
         }
 
         // check mouse down
-        if window.get_gi_mut().get_mouse_down()?.is_none() {
+        if window.get_gi_mut().get_mouse_released()? {
             if self.dbl_click_timeout.is_none() {
                 self.click_release_time = 0.0;
             }
-        } else {
+        } else if window.get_gi_mut().get_mouse_pressed()?.is_some() {
             if self.current_finished {
                 if self.is_create_mode {
                     if self.click_release_time < DOUBLE_CLICK_TIME {
@@ -1403,12 +1404,12 @@ impl GameState {
                         self.click_time = None;
                         if self.state == 8 {
                             let mut expl_conv_system = ExplConvParticleSystem::new(
-                                1500.0,
+                                1.5,
                                 Circle::new(self.mouse_pos.x, self.mouse_pos.y, 20.0),
                                 Color::from_rgba(0x99, 0xFF, 0x99, 255),
                                 1.0,
                             );
-                            expl_conv_system.activate(30, 200.0);
+                            expl_conv_system.activate(30, 0.2);
                             self.expl_conv_p_systems.push(expl_conv_system);
                             self.state = 9;
                             self.state_dirty = true;
@@ -1419,7 +1420,7 @@ impl GameState {
                             if rand_out < 0.6 {
                                 // spawn planet
                                 let mut expl_conv_system = ExplConvParticleSystem::new(
-                                    rng.gen_range(1200.0, 1600.0),
+                                    rng.gen_range(1.2, 1.6),
                                     Circle::new(
                                         self.mouse_pos.x,
                                         self.mouse_pos.y,
@@ -1434,7 +1435,7 @@ impl GameState {
                                     1.0,
                                 );
                                 expl_conv_system
-                                    .activate(rng.gen_range(13, 40), rng.gen_range(150.0, 300.0));
+                                    .activate(rng.gen_range(13, 40), rng.gen_range(0.15, 0.3));
                                 self.expl_conv_p_systems.push(expl_conv_system);
                             } else if rand_out < 0.85 {
                                 // spawn star
@@ -1613,6 +1614,8 @@ impl GameState {
             if self.state == 10 {
                 self.state = 0;
                 self.state_dirty = true;
+                window.get_music_mut(&self.music2)?.stop()?;
+                self.music_on = false;
             }
         }
 
@@ -1626,7 +1629,7 @@ impl GameState {
 
         if let Some(t) = &mut self.dbl_click_timeout {
             *t += dt;
-            if *t > 300.0 {
+            if *t > 0.3 {
                 self.dbl_click_timeout = None;
             }
         }
@@ -1641,8 +1644,8 @@ impl GameState {
             (self.player.y - self.joining_particles.particle_system.host_rect.y) / 30.0;
         let (cx, cy) = self.camera.get_view_xy()?;
         self.camera.set_view_xy(
-            (self.player.x - WIDTH_F / 2.0 - cx) / 40.0,
-            (self.player.y - HEIGHT_F / 2.0 - cy) / 40.0,
+            cx + (self.player.x - WIDTH_F / 2.0 - cx) / 40.0,
+            cy + (self.player.y - HEIGHT_F / 2.0 - cy) / 40.0,
         )?;
         window.get_gi_mut().set_camera(&self.camera)?;
 
@@ -1742,7 +1745,7 @@ impl GameState {
         }
 
         if self.player_particles.opacity < 1.0 && self.state > 1 {
-            self.player_particles.opacity += dt as f32 / 7000.0;
+            self.player_particles.opacity += dt as f32 / 7.0;
             if self.player_particles.opacity > 1.0 {
                 self.player_particles.opacity = 1.0;
             }
@@ -1792,6 +1795,7 @@ impl GameState {
                         if *timer > TEXT_RATE {
                             *timer -= TEXT_RATE;
                             *text_idx += 1;
+                            window.get_sound_mut(&self.s_tap).unwrap().play(0.2)?;
                             if *text_idx >= text.len() {
                                 mi.is_loaded = true;
                                 if i + 1 < self.menu.items.len() {
@@ -1898,7 +1902,8 @@ impl GameState {
         Ok(())
     }
 
-    fn draw(&mut self, window: &mut Window) -> Result<(), String> {
+    pub fn draw(&mut self, window: &mut Window) -> Result<(), String> {
+        window.get_gi_mut().begin_drawing()?;
         window.get_gi_mut().clear_window(Color::BLACK)?;
         let mut rect = Rectangle::default();
         for mi in &mut self.menu.items {
@@ -2000,6 +2005,7 @@ impl GameState {
         //        }
         //    }
         //}
+        window.get_gi_mut().end_drawing()?;
 
         Ok(())
     }
