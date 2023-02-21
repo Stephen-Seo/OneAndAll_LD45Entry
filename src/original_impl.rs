@@ -511,13 +511,13 @@ impl Menu {
                     true,
                     "Single click to move, Double-click to create something",
                 ),
-                Menu::instant_text(
-                    20.0,
-                    HEIGHT_F - 20.0,
-                    20.0,
-                    true,
-                    "S - save; L - load (can load from the start); R - reset",
-                ),
+                //Menu::instant_text(
+                //    20.0,
+                //    HEIGHT_F - 20.0,
+                //    20.0,
+                //    true,
+                //    "S - save; L - load (can load from the start); R - reset",
+                //),
             ],
         }
     }
@@ -1094,7 +1094,7 @@ impl Fish {
             FishState::Idle => {
                 self.swim_time = rand::thread_rng().gen_range(1.1, 2.4);
                 self.swim_timer = self.swim_time;
-                self.anim_timer = 1.6;
+                self.anim_timer = 2.8;
                 self.anim_time = 1.6;
                 self.swim_v = 0.0;
             }
@@ -1102,7 +1102,7 @@ impl Fish {
                 self.swim_time = rand::thread_rng().gen_range(1.4, 2.3);
                 self.swim_timer = self.swim_time;
                 self.r = rand::thread_rng().gen_range(0.0, std::f32::consts::PI * 2.0);
-                self.anim_timer = rand::thread_rng().gen_range(0.6, 1.0);
+                self.anim_timer = rand::thread_rng().gen_range(1.6, 2.0);
                 self.anim_time = self.anim_timer;
                 self.swim_v = (self.anim_timer / 8.0) as f32;
             }
@@ -1127,7 +1127,7 @@ impl Fish {
             self.anim_timer = self.anim_time;
         }
 
-        self.pos -= Transform::rotate(self.r) * Vector::new(self.swim_v, 0.0) * dt as f32 * 1000.0;
+        self.pos -= Transform::rotate(self.r) * Vector::new(self.swim_v, 0.0) * dt as f32 * 200.0;
     }
 
     fn draw(&mut self, i_fish: &str, window: &mut Window, transform: Transform) {
@@ -1399,7 +1399,7 @@ impl GameState {
                                 Color::from_rgba(0x99, 0xFF, 0x99, 255),
                                 1.0,
                             );
-                            expl_conv_system.activate(30, 0.2);
+                            expl_conv_system.activate(30, 200.0);
                             self.expl_conv_p_systems.push(expl_conv_system);
                             self.state = 9;
                             self.state_dirty = true;
@@ -1425,7 +1425,7 @@ impl GameState {
                                     1.0,
                                 );
                                 expl_conv_system
-                                    .activate(rng.gen_range(13, 40), rng.gen_range(0.15, 0.3));
+                                    .activate(rng.gen_range(13, 40), rng.gen_range(150.0, 300.0));
                                 self.expl_conv_p_systems.push(expl_conv_system);
                             } else if rand_out < 0.85 {
                                 // spawn star
