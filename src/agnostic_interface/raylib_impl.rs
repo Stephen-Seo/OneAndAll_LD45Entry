@@ -12,8 +12,9 @@ use std::{
     collections::HashMap,
     ffi::CString,
     os::raw::{c_char, c_int},
-    path::Path,
+    path::{Path, PathBuf},
     rc::Rc,
+    str::FromStr,
 };
 
 use crate::{
@@ -56,25 +57,18 @@ impl RaylibShader {
     pub fn get_shader_id(&self) -> ::std::os::raw::c_uint {
         self.shader.id as ::std::os::raw::c_uint
     }
-}
 
-#[derive(Clone, Debug)]
-struct RaylibShaderHandler {
-    shader: Rc<RefCell<RaylibShader>>,
-}
-
-impl ShaderInterface for RaylibShaderHandler {
     fn set_transform_attrib(&mut self, transform: Transform) -> Result<(), String> {
         let transform_cstr = CString::new("transform")
             .map_err(|_| String::from("Failed to create \"transform\" CString!"))?;
-        let attr_loc = get_attrib_location(&self.shader.borrow(), &transform_cstr);
+        let attr_loc = get_attrib_location(self, &transform_cstr);
         set_transform_3f(attr_loc, transform);
         Ok(())
     }
 
     fn begin_draw_shader(&self) -> Result<(), String> {
         unsafe {
-            ffi::BeginShaderMode(self.shader.borrow().shader);
+            ffi::BeginShaderMode(self.shader);
         }
         Ok(())
     }
@@ -89,9 +83,32 @@ impl ShaderInterface for RaylibShaderHandler {
     fn set_origin_attrib(&mut self, origin: Vector) -> Result<(), String> {
         let origin_cstr = CString::new("origin")
             .map_err(|_| String::from("Failed to create \"origin\" CString!"))?;
-        let attr_loc = get_attrib_location(&self.shader.borrow(), &origin_cstr);
+        let attr_loc = get_attrib_location(self, &origin_cstr);
         set_origin_2f(attr_loc, origin);
         Ok(())
+    }
+}
+
+#[derive(Clone, Debug)]
+struct RaylibShaderHandler {
+    shader: Rc<RefCell<RaylibShader>>,
+}
+
+impl ShaderInterface for RaylibShaderHandler {
+    fn set_transform_attrib(&mut self, transform: Transform) -> Result<(), String> {
+        self.shader.borrow_mut().set_transform_attrib(transform)
+    }
+
+    fn begin_draw_shader(&self) -> Result<(), String> {
+        self.shader.borrow().begin_draw_shader()
+    }
+
+    fn end_draw_shader(&self) -> Result<(), String> {
+        self.shader.borrow().end_draw_shader()
+    }
+
+    fn set_origin_attrib(&mut self, origin: Vector) -> Result<(), String> {
+        self.shader.borrow_mut().set_origin_attrib(origin)
     }
 }
 
@@ -128,6 +145,7 @@ struct RaylibImage {
 #[derive(Clone, Debug)]
 struct RaylibImageHandler {
     image: Rc<RefCell<RaylibImage>>,
+    shader: Rc<RefCell<Option<RaylibShaderHandler>>>,
 }
 
 impl RaylibImageHandler {
@@ -199,7 +217,41 @@ impl ImageInterface for RaylibImageHandler {
         transform: crate::faux_quicksilver::Transform,
         origin: Vector,
     ) -> Result<(), String> {
-        todo!()
+        self.image_to_texture()?;
+        if let Some(shader) = self.shader.borrow_mut().as_mut() {
+            shader.set_origin_attrib(origin)?;
+            shader.set_transform_attrib(transform)?;
+            shader.begin_draw_shader()?;
+            unsafe {
+                ffi::DrawTexture(
+                    *self
+                        .image
+                        .borrow()
+                        .texture
+                        .as_ref()
+                        .ok_or_else(|| String::from("RaylibImage has no Texture!"))?,
+                    x.round() as i32,
+                    y.round() as i32,
+                    fqcolor_to_color(color),
+                );
+            }
+            shader.end_draw_shader()?;
+        } else {
+            unsafe {
+                ffi::DrawTexture(
+                    *self
+                        .image
+                        .borrow()
+                        .texture
+                        .as_ref()
+                        .ok_or_else(|| String::from("RaylibImage has no Texture!"))?,
+                    x.round() as i32,
+                    y.round() as i32,
+                    fqcolor_to_color(color),
+                );
+            }
+        }
+        Ok(())
     }
 
     fn draw_sub_transform(
@@ -210,7 +262,45 @@ impl ImageInterface for RaylibImageHandler {
         transform: crate::faux_quicksilver::Transform,
         origin: Vector,
     ) -> Result<(), String> {
-        todo!()
+        self.image_to_texture()?;
+        if let Some(shader) = self.shader.borrow_mut().as_mut() {
+            shader.set_origin_attrib(origin)?;
+            shader.set_transform_attrib(transform)?;
+            shader.begin_draw_shader()?;
+            unsafe {
+                ffi::DrawTexturePro(
+                    *self
+                        .image
+                        .borrow()
+                        .texture
+                        .as_ref()
+                        .ok_or_else(|| String::from("RaylibImage has no Texture!"))?,
+                    fqrect_to_rect(sub_rect),
+                    fqrect_to_rect(dest_rect),
+                    ffi::Vector2 { x: 0.0, y: 0.0 },
+                    0.0,
+                    fqcolor_to_color(color),
+                );
+            }
+            shader.end_draw_shader()?;
+        } else {
+            unsafe {
+                ffi::DrawTexturePro(
+                    *self
+                        .image
+                        .borrow()
+                        .texture
+                        .as_ref()
+                        .ok_or_else(|| String::from("RaylibImage has no Texture!"))?,
+                    fqrect_to_rect(sub_rect),
+                    fqrect_to_rect(dest_rect),
+                    ffi::Vector2 { x: 0.0, y: 0.0 },
+                    0.0,
+                    fqcolor_to_color(color),
+                );
+            }
+        }
+        Ok(())
     }
 
     fn get_w(&self) -> usize {
@@ -278,6 +368,7 @@ struct RaylibSoundHandler {
 impl SoundInterface for RaylibSoundHandler {
     fn play(&mut self, vol: f32) -> Result<(), String> {
         unsafe {
+            ffi::SetSoundVolume(self.sound.sound, vol);
             ffi::PlaySound(self.sound.sound);
         }
         Ok(())
@@ -480,7 +571,30 @@ impl GameInterface for RaylibGame {
         transform: crate::faux_quicksilver::Transform,
         origin: Vector,
     ) -> Result<(), String> {
-        todo!()
+        if let Some(shader) = self.shaders.get_mut("transform_origin") {
+            shader.borrow_mut().set_origin_attrib(origin)?;
+            shader.borrow_mut().set_transform_attrib(transform)?;
+            shader.borrow().begin_draw_shader()?;
+            unsafe {
+                ffi::DrawCircle(
+                    circle.x.round() as i32,
+                    circle.y.round() as i32,
+                    circle.r,
+                    fqcolor_to_color(color),
+                );
+            }
+            shader.borrow().end_draw_shader()?;
+        } else {
+            unsafe {
+                ffi::DrawCircle(
+                    circle.x.round() as i32,
+                    circle.y.round() as i32,
+                    circle.r,
+                    fqcolor_to_color(color),
+                );
+            }
+        }
+        Ok(())
     }
 
     fn draw_rect(
@@ -525,7 +639,32 @@ impl GameInterface for RaylibGame {
         transform: crate::faux_quicksilver::Transform,
         origin: Vector,
     ) -> Result<(), String> {
-        todo!()
+        if let Some(shader) = self.shaders.get_mut("transform_origin") {
+            shader.borrow_mut().set_origin_attrib(origin)?;
+            shader.borrow_mut().set_transform_attrib(transform)?;
+            shader.borrow().begin_draw_shader()?;
+            unsafe {
+                ffi::DrawRectangle(
+                    rect.x.round() as i32,
+                    rect.y.round() as i32,
+                    rect.w.round() as i32,
+                    rect.h.round() as i32,
+                    fqcolor_to_color(color),
+                );
+            }
+            shader.borrow().end_draw_shader()?;
+        } else {
+            unsafe {
+                ffi::DrawRectangle(
+                    rect.x.round() as i32,
+                    rect.y.round() as i32,
+                    rect.w.round() as i32,
+                    rect.h.round() as i32,
+                    fqcolor_to_color(color),
+                );
+            }
+        }
+        Ok(())
     }
 
     fn load_image(
@@ -539,11 +678,20 @@ impl GameInterface for RaylibGame {
             let path_buf: Vec<u8> = path_str.as_bytes().into();
             let cstring: CString = CString::from_vec_unchecked(path_buf);
             let image = ffi::LoadImage(cstring.as_ptr());
+            let shader: Option<RaylibShaderHandler> =
+                if let Some(shader) = self.shaders.get("transform_origin") {
+                    Some(RaylibShaderHandler {
+                        shader: shader.clone(),
+                    })
+                } else {
+                    None
+                };
             let raylib_image_handler = RaylibImageHandler {
                 image: Rc::new(RefCell::new(RaylibImage {
                     image,
                     texture: None,
                 })),
+                shader: Rc::new(RefCell::new(shader)),
             };
             self.images
                 .insert(path_str.to_owned(), raylib_image_handler.image.clone());
@@ -632,5 +780,17 @@ impl GameInterface for RaylibGame {
 
     fn set_camera(&mut self, camera: &Box<dyn super::CameraInterface>) -> Result<(), String> {
         todo!()
+    }
+}
+
+impl RaylibGame {
+    pub fn load_transform_origin_shader(&mut self) -> Result<Box<dyn ShaderInterface>, String> {
+        self.load_shader(
+            String::from("transform_origin"),
+            &PathBuf::from_str("static/transform.vs")
+                .map_err(|_| String::from("Failed to convert \"static/transform.vs\" to path!"))?,
+            &PathBuf::from_str("static/simple.fs")
+                .map_err(|_| String::from("Failed to convert \"static/simple.fs\" to path!"))?,
+        )
     }
 }
