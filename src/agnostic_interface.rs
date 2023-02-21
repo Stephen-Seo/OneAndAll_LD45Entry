@@ -52,14 +52,13 @@ pub trait MusicInterface {
 pub trait ShaderInterface {
     fn set_transform_attrib(&mut self, transform: Transform) -> Result<(), String>;
     fn set_origin_attrib(&mut self, origin: Vector) -> Result<(), String>;
+    fn set_camera_attrib(&mut self, camera: Vector) -> Result<(), String>;
     fn begin_draw_shader(&self) -> Result<(), String>;
     fn end_draw_shader(&self) -> Result<(), String>;
 }
 
 pub trait CameraInterface {
-    fn get_view(&self) -> Result<Rectangle, String>;
     fn get_view_xy(&self) -> Result<(f32, f32), String>;
-    fn set_view(&mut self, rect: Rectangle) -> Result<(), String>;
     fn set_view_xy(&mut self, x: f32, y: f32) -> Result<(), String>;
 }
 
@@ -113,4 +112,5 @@ pub trait GameInterface {
     fn get_camera(&mut self) -> Result<Box<dyn CameraInterface>, String>;
     fn get_default_camera(&mut self) -> Result<Box<dyn CameraInterface>, String>;
     fn set_camera(&mut self, camera: &Box<dyn CameraInterface>) -> Result<(), String>;
+    fn set_camera_xy(&mut self, x: f32, y: f32) -> Result<(), String>;
 }

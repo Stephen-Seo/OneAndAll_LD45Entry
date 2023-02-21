@@ -143,6 +143,12 @@ impl Vector {
     }
 }
 
+impl From<(f32, f32)> for Vector {
+    fn from(t: (f32, f32)) -> Self {
+        Self { x: t.0, y: t.1 }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Transform {
     pub mat: [f32; 9],

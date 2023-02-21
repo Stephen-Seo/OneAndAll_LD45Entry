@@ -40,7 +40,7 @@ pub fn set_transform_3f(index: ::std::os::raw::c_uint, transform: Transform) {
     }
 }
 
-pub fn set_origin_2f(index: ::std::os::raw::c_uint, origin: Vector) {
+pub fn set_attr_2f(index: ::std::os::raw::c_uint, origin: Vector) {
     unsafe {
         glVertexAttrib2f(index, origin.x, origin.y);
     }
