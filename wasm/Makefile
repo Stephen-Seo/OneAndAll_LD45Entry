@@ -9,10 +9,9 @@ ld45.html: src/main.c ../target/wasm32-unknown-emscripten/release/libld45_lib.a
 		-sTOTAL_MEMORY=1024MB \
 		-sALLOW_MEMORY_GROWTH=1 \
 		-O2 \
+-fsanitize=address \
 		-sEXPORTED_FUNCTIONS="['_malloc', '_main']" \
 		-sEXPORTED_RUNTIME_METHODS=ccall,cwrap \
--fsanitize=address \
--sWARN_UNALIGNED=1 \
 		--preload-file ../static src/main.c
 	ln -sf ld45.html index.html
 
