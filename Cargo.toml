@@ -2,11 +2,23 @@
 name = "ld45_one_and_all"
 version = "0.1.1"
 authors = ["Stephen Seo <seo.disparate@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-quicksilver = { version = "0.3.19", default-features = false, features = [ "fonts", "saving", "sounds" ] }
+#quicksilver = { version = "0.3.19", default-features = false, features = [ "fonts", "saving", "sounds" ] }
 rand = "0.7.2"
 serde = { version = "1.0.101", features = ["derive"] }
+
+[build-dependencies]
+bindgen = "0.64"
+
+[lib]
+name = "ld45_lib"
+path = "src/lib.rs"
+crate-type = ["rlib", "staticlib"]
+
+[[bin]]
+name = "ld45_bin"
+path = "src/bin.rs"

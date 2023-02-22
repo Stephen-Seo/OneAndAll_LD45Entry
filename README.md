@@ -1,17 +1,12 @@
 # Disclaimer
 
-The hosted WASM versions of this game still work, but I am not entirely sure if
-the security issues with this game apply to the WASM versions. **USE AT YOUR OWN
-RISK**.
-
-This game was created in a manner such that it was tightly coupled with the
-`quicksilver` dependency. However, `quicksilver` is no longer (actively)
-maintained, and its old dependencies no longer allow this game to run properly
-(crashes on native, cannot serve WASM version).
+This game has been ported away from quicksilver. A WASM version of the new
+version will be made soon.
 
 # Entry for LD45 - Start with Nothing
 
-This game is a Rust project using the quicksilver 2D game framework.
+This game is a Rust project that originally used the quicksilver 2D game
+framework. It now uses Raylib.
 
 It can be run locally by invoking `cargo run` in the project directory.
 
