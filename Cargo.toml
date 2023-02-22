@@ -2,7 +2,7 @@
 name = "ld45_one_and_all"
 version = "0.1.1"
 authors = ["Stephen Seo <seo.disparate@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -16,4 +16,13 @@ bindgen = "0.64"
 
 [features]
 default = []
-no_link_libs  = []
+no_link_libs = []
+
+[lib]
+name = "ld45_lib"
+crate-type = ["staticlib"]
+required-features = ["no_link_libs"]
+
+[[bin]]
+name = "ld45_bin"
+path = "src/main.rs"

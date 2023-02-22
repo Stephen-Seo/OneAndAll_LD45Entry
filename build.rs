@@ -19,6 +19,7 @@ fn main() {
     let bindings = bindgen::Builder::default()
         .header("raylib/raylib.h")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .clang_arg("-fvisibility=default")
         .generate()
         .expect("Unable to generate bindings");
 

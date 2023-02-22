@@ -577,7 +577,9 @@ impl RaylibGame {
 
         Self::native_setup();
         unsafe {
-            ffi::InitAudioDevice();
+            while !ffi::IsAudioDeviceReady() {
+                ffi::InitAudioDevice();
+            }
         }
 
         let mut self_unboxed = Self {
