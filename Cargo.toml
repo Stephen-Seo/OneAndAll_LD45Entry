@@ -14,15 +14,11 @@ serde = { version = "1.0.101", features = ["derive"] }
 [build-dependencies]
 bindgen = "0.64"
 
-[features]
-default = []
-no_link_libs = []
-
 [lib]
 name = "ld45_lib"
-crate-type = ["staticlib"]
-required-features = ["no_link_libs"]
+path = "src/lib.rs"
+crate-type = ["rlib", "staticlib"]
 
 [[bin]]
 name = "ld45_bin"
-path = "src/main.rs"
+path = "src/bin.rs"

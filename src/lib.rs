@@ -1,4 +1,4 @@
-mod agnostic_interface;
+pub mod agnostic_interface;
 mod faux_quicksilver;
 mod original_impl;
 mod shaders;
@@ -7,7 +7,7 @@ use agnostic_interface::raylib_impl::RaylibGame;
 use faux_quicksilver::Window;
 use original_impl::GameState;
 
-struct WasmState {
+pub struct WasmState {
     pub window: Window,
     pub game_state: GameState,
 }

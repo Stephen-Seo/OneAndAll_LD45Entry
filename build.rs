@@ -3,17 +3,9 @@ extern crate bindgen;
 use std::env;
 use std::path::PathBuf;
 
-#[cfg(not(feature = "no_link_libs"))]
-fn linking_libs() {
+fn main() {
     println!("cargo:rustc-link-lib=raylib");
     println!("cargo:rustc-link-lib=OpenGL");
-}
-
-#[cfg(feature = "no_link_libs")]
-fn linking_libs() {}
-
-fn main() {
-    linking_libs();
     println!("cargo:rerun-if-changed=raylib/raylib.h");
 
     let bindings = bindgen::Builder::default()
