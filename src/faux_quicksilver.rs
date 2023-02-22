@@ -344,7 +344,7 @@ impl Window {
     }
 
     pub fn update_music(&mut self) -> Result<(), String> {
-        for (_, music) in &mut self.music {
+        for music in self.music.values_mut() {
             music.update()?;
         }
         Ok(())

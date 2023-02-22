@@ -583,15 +583,13 @@ impl ParticleSystem {
             self.particles[i].life_timer += dt;
             if self.particles[i].life_timer > self.particles[i].lifetime {
                 self.particles.swap_remove(i);
+            } else if self.is_rect {
+                self.particles[i].rect.x += self.particles[i].velx * dt;
+                self.particles[i].rect.y += self.particles[i].vely * dt;
+                self.particles[i].r += self.particles[i].velr * dt;
             } else {
-                if self.is_rect {
-                    self.particles[i].rect.x += self.particles[i].velx * dt as f32;
-                    self.particles[i].rect.y += self.particles[i].vely * dt as f32;
-                    self.particles[i].r += self.particles[i].velr * dt as f32;
-                } else {
-                    self.particles[i].circle.x += self.particles[i].velx * dt as f32;
-                    self.particles[i].circle.y += self.particles[i].vely * dt as f32;
-                }
+                self.particles[i].circle.x += self.particles[i].velx * dt;
+                self.particles[i].circle.y += self.particles[i].vely * dt;
             }
         }
 
@@ -627,9 +625,8 @@ impl ParticleSystem {
             return;
         }
         for particle in &mut self.particles {
-            self.color.a = ((1.0 - (particle.life_timer / particle.lifetime) as f32)
-                * self.opacity
-                * 255.0) as u8;
+            self.color.a =
+                ((1.0 - particle.life_timer / particle.lifetime) * self.opacity * 255.0) as u8;
             if particle.is_rect {
                 let pre_transform =
                     Transform::translate(particle.rect.w / 2.0, particle.rect.h / 2.0)
@@ -747,7 +744,7 @@ impl RotatingParticleSystem {
             self.particle_system.update(dt);
             self.particle_system.host_circle = saved_cir;
         }
-        self.r += self.velr * dt as f32 * 10.0;
+        self.r += self.velr * dt * 10.0;
     }
 
     fn draw(&mut self, window: &mut Window, transform: Transform) {
@@ -846,7 +843,7 @@ impl ExplConvParticleSystem {
         }
 
         if self.life_timer < self.lifetime / 2.0 {
-            let amount = interp_sq_inv((self.life_timer / self.lifetime) as f32 * 2.0);
+            let amount = interp_sq_inv(self.life_timer / self.lifetime * 2.0);
             for particle in &mut self.particles {
                 let dir =
                     Transform::rotate(particle.r) * Vector::new(particle.offset * amount, 0.0);
@@ -854,7 +851,7 @@ impl ExplConvParticleSystem {
                 particle.circle.y = dir.y + self.host_circle.y;
             }
         } else {
-            let amount = 1.0 - interp_sq(((self.life_timer / self.lifetime) as f32 - 0.5) * 2.0);
+            let amount = 1.0 - interp_sq((self.life_timer / self.lifetime - 0.5) * 2.0);
             for particle in &mut self.particles {
                 let dir =
                     Transform::rotate(particle.r) * Vector::new(particle.offset * amount, 0.0);
@@ -862,7 +859,7 @@ impl ExplConvParticleSystem {
                 particle.circle.y = dir.y + self.host_circle.y;
             }
         }
-        return false;
+        false
     }
 
     fn draw(&mut self, window: &mut Window, transform: Transform) {
@@ -870,9 +867,8 @@ impl ExplConvParticleSystem {
             return;
         }
         for particle in &mut self.particles {
-            self.color.a = (((self.life_timer / self.lifetime) as f32 / 2.0 + 0.5)
-                * self.opacity
-                * 255.0) as u8;
+            self.color.a =
+                ((self.life_timer / self.lifetime / 2.0 + 0.5) * self.opacity * 255.0) as u8;
             window
                 .get_gi_mut()
                 .draw_circle_transform(
@@ -1019,7 +1015,7 @@ impl Star {
 
     fn update(&mut self, dt: f32) {
         self.particle_system.update(dt);
-        self.r += self.velr * dt as f32;
+        self.r += self.velr * dt;
     }
 
     fn draw(&mut self, image: &str, window: &mut Window, transform: Transform) {
@@ -1104,7 +1100,7 @@ impl Fish {
                 self.r = rand::thread_rng().gen_range(0.0, std::f32::consts::PI * 2.0);
                 self.anim_timer = rand::thread_rng().gen_range(1.6, 2.0);
                 self.anim_time = self.anim_timer;
-                self.swim_v = (self.anim_timer / 8.0) as f32;
+                self.swim_v = self.anim_timer / 8.0;
             }
         }
     }
@@ -1127,7 +1123,7 @@ impl Fish {
             self.anim_timer = self.anim_time;
         }
 
-        self.pos -= Transform::rotate(self.r) * Vector::new(self.swim_v, 0.0) * dt as f32 * 200.0;
+        self.pos -= Transform::rotate(self.r) * Vector::new(self.swim_v, 0.0) * dt * 200.0;
     }
 
     fn draw(&mut self, i_fish: &str, window: &mut Window, transform: Transform) {
@@ -1138,7 +1134,7 @@ impl Fish {
         let mut body_rect = self.body_rect;
         body_rect.x = self.pos.x - self.body_rect.w / 2.0;
         body_rect.y = self.pos.y - self.body_rect.h / 2.0;
-        let body_tr = Transform::rotate(anim_angle as f32 + self.r);
+        let body_tr = Transform::rotate(anim_angle + self.r);
         fish_img
             .draw_sub_transform(
                 self.body_rect,
@@ -1159,7 +1155,7 @@ impl Fish {
             .sin();
         let tail_tr = body_tr
             * Transform::translate(-body_rect.w / 2.0, 0.0)
-            * Transform::rotate(-anim_angle as f32)
+            * Transform::rotate(-anim_angle)
             * Transform::translate(body_rect.w / 2.0, 0.0);
         fish_img
             .draw_sub_transform(
@@ -1551,58 +1547,57 @@ impl GameState {
         }
 
         // check pressed keys
-        if window.get_gi_mut().get_key_pressed('s')? {
-            if self.state == 10 {
-                let save_data = SaveData {
-                    planets: self.planets.clone(),
-                    stars: self.stars.clone(),
-                    fishes: self.fishes.clone(),
-                    player: self.player.clone(),
-                    joining_particles: self.joining_particles.clone(),
-                };
-                // TODO
-                //save("OneAndAll_LD45", "slot0", &save_data)?;
-                self.save_load_notification = Some(SaveLoadNotification::Save {
-                    text: None,
-                    timer: SL_NOTIF_TIME,
-                });
-            }
-        } else if window.get_gi_mut().get_key_pressed('l')? {
-            // TODO
-            //let load_result = load::<SaveData>("OneAndAll_LD45", "slot0");
-            //if let Ok(save_data) = load_result {
-            //    self.planets = save_data.planets;
-            //    self.stars = save_data.stars;
-            //    self.fishes = save_data.fishes;
-            //    self.player = save_data.player;
-            //    self.joining_particles = save_data.joining_particles;
-            //    self.expl_conv_p_systems.clear();
-            //    self.move_to = Vector {
-            //        x: self.player.x,
-            //        y: self.player.y,
-            //    };
-            //    self.camera.set_view_xy(
-            //        self.player.x - WIDTH_F / 2.0,
-            //        self.player.y - HEIGHT_F / 2.0,
-            //    );
-            //    self.dbl_click_timeout = None;
-            //    self.click_time = None;
-            //    self.click_release_time = DOUBLE_CLICK_TIME;
+        //if window.get_gi_mut().get_key_pressed('s')? {
+        // TODO implement save
+        //if self.state == 10 {
+        //    let save_data = SaveData {
+        //        planets: self.planets.clone(),
+        //        stars: self.stars.clone(),
+        //        fishes: self.fishes.clone(),
+        //        player: self.player,
+        //        joining_particles: self.joining_particles.clone(),
+        //    };
+        //    save("OneAndAll_LD45", "slot0", &save_data)?;
+        //    self.save_load_notification = Some(SaveLoadNotification::Save {
+        //        text: None,
+        //        timer: SL_NOTIF_TIME,
+        //    });
+        //}
+        //} else if window.get_gi_mut().get_key_pressed('l')? {
+        // TODO
+        //let load_result = load::<SaveData>("OneAndAll_LD45", "slot0");
+        //if let Ok(save_data) = load_result {
+        //    self.planets = save_data.planets;
+        //    self.stars = save_data.stars;
+        //    self.fishes = save_data.fishes;
+        //    self.player = save_data.player;
+        //    self.joining_particles = save_data.joining_particles;
+        //    self.expl_conv_p_systems.clear();
+        //    self.move_to = Vector {
+        //        x: self.player.x,
+        //        y: self.player.y,
+        //    };
+        //    self.camera.set_view_xy(
+        //        self.player.x - WIDTH_F / 2.0,
+        //        self.player.y - HEIGHT_F / 2.0,
+        //    );
+        //    self.dbl_click_timeout = None;
+        //    self.click_time = None;
+        //    self.click_release_time = DOUBLE_CLICK_TIME;
 
-            //    self.state = 10;
-            //    self.state_dirty = true;
-            //    self.save_load_notification = Some(SaveLoadNotification::Load {
-            //        text: None,
-            //        timer: SL_NOTIF_TIME,
-            //    });
-            //}
-        } else if window.get_gi_mut().get_key_pressed('r')? {
-            if self.state == 10 {
-                self.state = 0;
-                self.state_dirty = true;
-                window.get_music_mut(&self.music2)?.stop()?;
-                self.music_on = false;
-            }
+        //    self.state = 10;
+        //    self.state_dirty = true;
+        //    self.save_load_notification = Some(SaveLoadNotification::Load {
+        //        text: None,
+        //        timer: SL_NOTIF_TIME,
+        //    });
+        //}
+        //} else if window.get_gi_mut().get_key_pressed('r')? && self.state == 10 {
+        if window.get_gi_mut().get_key_pressed('r')? && self.state == 10 {
+            self.state = 0;
+            self.state_dirty = true;
+            window.get_music_mut(&self.music2)?.stop()?;
+            self.music_on = false;
         }
 
         self.click_release_time += dt;
@@ -1633,7 +1628,7 @@ impl GameState {
             cx + (self.player.x - WIDTH_F / 2.0 - cx) / 40.0,
             cy + (self.player.y - HEIGHT_F / 2.0 - cy) / 40.0,
         )?;
-        window.get_gi_mut().set_camera(&self.camera)?;
+        window.get_gi_mut().set_camera(self.camera.as_ref())?;
 
         self.player_r += dt / 10.0;
 
@@ -1721,7 +1716,7 @@ impl GameState {
         }
 
         if self.joining_particles.particle_system.opacity < 1.0 && self.state > 2 {
-            self.joining_particles.particle_system.opacity += JOINING_OPACITY_RATE * dt as f32;
+            self.joining_particles.particle_system.opacity += JOINING_OPACITY_RATE * dt;
             if self.joining_particles.particle_system.opacity > 1.0 {
                 self.joining_particles.particle_system.opacity = 1.0;
             }
@@ -1731,7 +1726,7 @@ impl GameState {
         }
 
         if self.player_particles.opacity < 1.0 && self.state > 1 {
-            self.player_particles.opacity += dt as f32 / 7.0;
+            self.player_particles.opacity += dt / 7.0;
             if self.player_particles.opacity > 1.0 {
                 self.player_particles.opacity = 1.0;
             }
@@ -1739,7 +1734,6 @@ impl GameState {
 
         if self.music_on {
         } else if self.state == 10 {
-            let mut music_on = false;
             let music = window.get_music_mut(&self.music2)?;
             music.set_loop(true)?;
             music.play(0.5)?;
@@ -1953,7 +1947,7 @@ impl GameState {
             self.player,
             Color::from_rgba(255, 255, 255, (self.player_particles.opacity * 255.0) as u8),
             Transform::translate(self.player.w / 2.0, self.player.h / 2.0)
-                * Transform::rotate(self.player_r as f32),
+                * Transform::rotate(self.player_r),
             Vector {
                 x: self.player.x + self.player.w / 2.0,
                 y: self.player.y + self.player.h / 2.0,

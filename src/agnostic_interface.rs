@@ -114,6 +114,6 @@ pub trait GameInterface {
 
     fn get_camera(&mut self) -> Result<Box<dyn CameraInterface>, String>;
     fn get_default_camera(&mut self) -> Result<Box<dyn CameraInterface>, String>;
-    fn set_camera(&mut self, camera: &Box<dyn CameraInterface>) -> Result<(), String>;
+    fn set_camera(&mut self, camera: &dyn CameraInterface) -> Result<(), String>;
     fn set_camera_xy(&mut self, x: f32, y: f32) -> Result<(), String>;
 }

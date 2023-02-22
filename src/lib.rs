@@ -38,11 +38,11 @@ pub extern "C" fn ld45_iterate(context: *mut ::std::os::raw::c_void) {
         (*state_ptr).get_window_mut().update_music().unwrap();
         (*state_ptr)
             .get_state_mut()
-            .update(&mut (*state_ptr).get_window_mut())
+            .update((*state_ptr).get_window_mut())
             .unwrap();
         (*state_ptr)
             .get_state_mut()
-            .draw(&mut (*state_ptr).get_window_mut())
+            .draw((*state_ptr).get_window_mut())
             .unwrap();
     }
 }

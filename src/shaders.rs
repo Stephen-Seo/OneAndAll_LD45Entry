@@ -32,9 +32,9 @@ pub fn set_transform_3f(index: ::std::os::raw::c_uint, transform: Transform) {
         unsafe {
             glVertexAttrib3f(
                 idx,
-                transform.mat[0 + i as usize],
-                transform.mat[3 + i as usize],
-                transform.mat[6 + i as usize],
+                transform.mat[i],
+                transform.mat[3 + i],
+                transform.mat[6 + i],
             );
         }
     }

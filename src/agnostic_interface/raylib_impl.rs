@@ -3,6 +3,7 @@ pub mod ffi {
     #![allow(non_camel_case_types)]
     #![allow(non_snake_case)]
     #![allow(dead_code)]
+    #![allow(clippy::approx_constant)]
 
     include!(concat!(env!("OUT_DIR"), "/raylib_bindings.rs"));
 }
@@ -603,22 +604,22 @@ impl RaylibGame {
 impl Drop for RaylibGame {
     fn drop(&mut self) {
         unsafe {
-            for (_, shader) in &self.shaders {
+            for shader in self.shaders.values() {
                 ffi::UnloadShader(shader.borrow().shader);
             }
-            for (_, image) in &self.images {
+            for image in self.images.values() {
                 if let Some(texture) = image.borrow_mut().texture.take() {
                     ffi::UnloadTexture(texture);
                 }
                 ffi::UnloadImage(image.borrow().image);
             }
-            for (_, font) in &self.fonts {
+            for font in self.fonts.values() {
                 ffi::UnloadFont(font.font);
             }
-            for (_, sound) in &self.sounds {
+            for sound in self.sounds.values() {
                 ffi::UnloadSound(sound.sound);
             }
-            for (_, music) in &self.music {
+            for music in self.music.values() {
                 ffi::UnloadMusicStream(music.borrow().music);
             }
             ffi::CloseWindow();
@@ -917,22 +918,18 @@ impl GameInterface for RaylibGame {
             let path_buf: Vec<u8> = path_str.as_bytes().into();
             let cstring: CString = CString::from_vec_unchecked(path_buf);
             let image = ffi::LoadImage(cstring.as_ptr());
-            let tr_or_cam_shader: Option<RaylibShaderHandler> =
-                if let Some(shader) = self.shaders.get("transform_origin") {
-                    Some(RaylibShaderHandler {
-                        shader: shader.clone(),
-                    })
-                } else {
-                    None
-                };
+            let tr_or_cam_shader: Option<RaylibShaderHandler> = self
+                .shaders
+                .get("transform_origin")
+                .map(|shader| RaylibShaderHandler {
+                    shader: shader.clone(),
+                });
             let cam_shader: Option<RaylibShaderHandler> =
-                if let Some(shader) = self.shaders.get("camera") {
-                    Some(RaylibShaderHandler {
+                self.shaders
+                    .get("camera")
+                    .map(|shader| RaylibShaderHandler {
                         shader: shader.clone(),
-                    })
-                } else {
-                    None
-                };
+                    });
             let raylib_image_handler = RaylibImageHandler {
                 image: Rc::new(RefCell::new(RaylibImage {
                     image,
@@ -1024,11 +1021,11 @@ impl GameInterface for RaylibGame {
     }
 
     fn get_default_camera(&mut self) -> Result<Box<dyn super::CameraInterface>, String> {
-        Ok(Box::new(Camera::default()))
+        Ok(Box::<Camera>::default())
     }
 
-    fn set_camera(&mut self, camera: &Box<dyn super::CameraInterface>) -> Result<(), String> {
-        self.camera.borrow_mut().pos = camera.as_ref().get_view_xy()?.into();
+    fn set_camera(&mut self, camera: &dyn super::CameraInterface) -> Result<(), String> {
+        self.camera.borrow_mut().pos = camera.get_view_xy()?.into();
         Ok(())
     }
 
