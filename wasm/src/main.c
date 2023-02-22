@@ -3,6 +3,8 @@
 
 #include <ld45_lib.h>
 
+#include <stdio.h>
+
 void main_loop(void *ud) {
     ld45_iterate(ud);
 }
