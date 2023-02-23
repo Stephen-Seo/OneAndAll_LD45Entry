@@ -16,7 +16,7 @@ Note the code is very messy due to the make-game-in-two-days constraint.
 
 # Links
 
-[WASM of new ported version (slower than native version)](https://burnedkirby.com/ld45_ported)
+[WASM of new ported version (now fixed, should be just about as good as native version)](https://burnedkirby.com/ld45_ported)
 
 [The ldjam.com page](https://ldjam.com/events/ludum-dare/45/one-and-all)
 
