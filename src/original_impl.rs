@@ -3,7 +3,6 @@ use std::{path::PathBuf, str::FromStr};
 use crate::agnostic_interface::CameraInterface;
 use crate::faux_quicksilver::{Circle, Color, Rectangle, Transform, Vector, Window};
 use rand::prelude::*;
-use serde::{Deserialize, Serialize};
 
 const WIDTH_F: f32 = 800.0;
 const HEIGHT_F: f32 = 600.0;
@@ -523,7 +522,7 @@ impl Menu {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 struct Particle {
     rect: Rectangle,
     circle: Circle,
@@ -536,7 +535,7 @@ struct Particle {
     life_timer: f32,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 struct ParticleSystem {
     particles: Vec<Particle>,
     spawn_timer: f32,
@@ -687,7 +686,7 @@ impl ParticleSystem {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 struct RotatingParticleSystem {
     particle_system: ParticleSystem,
     r: f32,
@@ -885,7 +884,7 @@ impl ExplConvParticleSystem {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 struct Planet {
     circle: Circle,
     color: Color,
@@ -971,7 +970,7 @@ impl Planet {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone)]
 struct Star {
     color: Color,
     particle_system: ParticleSystem,
@@ -1039,7 +1038,7 @@ impl Star {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone)]
 struct Fish {
     pos: Vector,
     r: f32,
@@ -1172,7 +1171,7 @@ impl Fish {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 struct SaveData {
     planets: Vec<Planet>,
     stars: Vec<Star>,

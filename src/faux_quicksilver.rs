@@ -2,13 +2,11 @@ use std::collections::HashMap;
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 use std::path::Path;
 
-use serde::{Deserialize, Serialize};
-
 use crate::agnostic_interface::{
     FontInterface, GameInterface, ImageInterface, MusicInterface, SoundInterface,
 };
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Color {
     pub r: u8,
     pub g: u8,
@@ -43,7 +41,7 @@ impl Color {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Rectangle {
     pub x: f32,
     pub y: f32,
@@ -73,7 +71,7 @@ impl Default for Rectangle {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Circle {
     pub x: f32,
     pub y: f32,
@@ -91,7 +89,7 @@ impl Circle {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Vector {
     pub x: f32,
     pub y: f32,
@@ -156,7 +154,7 @@ impl From<(f32, f32)> for Vector {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Transform {
     pub mat: [f32; 9],
 }
