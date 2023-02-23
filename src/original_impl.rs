@@ -1238,11 +1238,11 @@ impl GameState {
             s_get.clone(),
         )?;
         let s_power_up = String::from("power_up.mp3");
-        window.load_sound(
-            &PathBuf::from_str("static/power_up.mp3")
-                .map_err(|_| String::from("Failed to load \"static/power_up.mp3\""))?,
-            s_power_up.clone(),
-        )?;
+        //window.load_sound(
+        //    &PathBuf::from_str("static/power_up.mp3")
+        //        .map_err(|_| String::from("Failed to load \"static/power_up.mp3\""))?,
+        //    s_power_up.clone(),
+        //)?;
         let s_tap = String::from("tap.mp3");
         window.load_sound(
             &PathBuf::from_str("static/tap.mp3")
@@ -1250,17 +1250,17 @@ impl GameState {
             s_tap.clone(),
         )?;
         let s_speak_m = String::from("speak_m.mp3");
-        window.load_sound(
-            &PathBuf::from_str("static/speak_m.mp3")
-                .map_err(|_| String::from("Failed to load \"static/speak_m.mp3\""))?,
-            s_speak_m.clone(),
-        )?;
+        //window.load_sound(
+        //    &PathBuf::from_str("static/speak_m.mp3")
+        //        .map_err(|_| String::from("Failed to load \"static/speak_m.mp3\""))?,
+        //    s_speak_m.clone(),
+        //)?;
         let s_speak_f = String::from("speak_f.mp3");
-        window.load_sound(
-            &PathBuf::from_str("static/speak_f.mp3")
-                .map_err(|_| String::from("Failed to load \"static/speak_f.mp3\""))?,
-            s_speak_f.clone(),
-        )?;
+        //window.load_sound(
+        //    &PathBuf::from_str("static/speak_f.mp3")
+        //        .map_err(|_| String::from("Failed to load \"static/speak_f.mp3\""))?,
+        //    s_speak_f.clone(),
+        //)?;
 
         let font = String::from("ClearSans-Regular.ttf");
         window.load_font(

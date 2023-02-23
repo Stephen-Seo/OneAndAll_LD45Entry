@@ -973,8 +973,7 @@ impl GameInterface for RaylibGame {
             let path_str = path
                 .to_str()
                 .ok_or_else(|| format!("Failed to convert \"{path:?}\" to str!"))?;
-            let path_buf: Vec<u8> = path_str.as_bytes().into();
-            let cstring: CString = CString::from_vec_unchecked(path_buf);
+            let cstring: CString = CString::from_vec_unchecked(path_str.as_bytes().into());
             let sound = ffi::LoadSound(cstring.as_ptr());
             let raylib_sound_handler = RaylibSoundHandler {
                 sound: Rc::new(RaylibSound { sound }),

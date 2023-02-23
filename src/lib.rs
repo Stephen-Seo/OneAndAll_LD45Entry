@@ -8,8 +8,8 @@ use faux_quicksilver::Window;
 use original_impl::GameState;
 
 pub struct WasmState {
-    pub window: Window,
-    pub game_state: GameState,
+    pub window: Box<Window>,
+    pub game_state: Box<GameState>,
 }
 
 impl WasmState {
@@ -25,8 +25,8 @@ impl WasmState {
 #[no_mangle]
 pub extern "C" fn ld45_initialize() -> *mut ::std::os::raw::c_void {
     let game_interface = RaylibGame::new_boxed(800, 600);
-    let mut window = Window::new(game_interface);
-    let game_state = GameState::new(&mut window).unwrap();
+    let mut window = Box::new(Window::new(game_interface));
+    let game_state = Box::new(GameState::new(&mut window).unwrap());
 
     Box::into_raw(Box::new(WasmState { window, game_state })) as *mut ::std::os::raw::c_void
 }
