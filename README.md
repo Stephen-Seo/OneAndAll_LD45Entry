@@ -23,5 +23,3 @@ Note the code is very messy due to the make-game-in-two-days constraint.
 [itch.io page hosting the game](https://seodisparate.itch.io/one-and-all-a-ludumdare-45-entry)
 
 [personal mirror (slow) that also hosts the game](https://burnedkirby.com/ld45/)
-
-[personal mirror of ported version](https://burnedkirby.com/ld45_ported/)
