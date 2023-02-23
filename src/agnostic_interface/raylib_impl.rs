@@ -956,6 +956,10 @@ impl GameInterface for RaylibGame {
             let path_buf: Vec<u8> = path_str.as_bytes().into();
             let cstring: CString = CString::from_vec_unchecked(path_buf);
             let font = ffi::LoadFont(cstring.as_ptr());
+            ffi::SetTextureFilter(
+                font.texture,
+                ffi::TextureFilter_TEXTURE_FILTER_BILINEAR as ::std::os::raw::c_int,
+            );
             let raylib_font_handler = RaylibFontHandler {
                 font: Rc::new(RaylibFont { font }),
             };
