@@ -1,7 +1,7 @@
 # Disclaimer
 
 This game has been ported away from quicksilver. A WASM version works
-~but is not as performant as the native version~ and works well.
+~~but is not as performant as the native version~~ and works well.
 
 # Entry for LD45 - Start with Nothing
 
