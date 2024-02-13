@@ -8,6 +8,8 @@ ld45.html: src/main.c ../target/wasm32-unknown-emscripten/release/libld45_lib.a
 		-Llib -lraylib \
 		-L../target/wasm32-unknown-emscripten/release -lld45_lib \
 		-sALLOW_MEMORY_GROWTH \
+		-s INITIAL_MEMORY=64MB \
+		-s TOTAL_STACK=32MB \
 		-O2 \
 		-sEXPORTED_FUNCTIONS="['_malloc', '_main']" \
 		-sEXPORTED_RUNTIME_METHODS=ccall,cwrap \

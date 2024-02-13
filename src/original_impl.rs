@@ -600,19 +600,19 @@ impl ParticleSystem {
                 circle: self.host_circle,
                 is_rect: self.is_rect,
                 velx: (rand::thread_rng()
-                    .gen_range(-PARTICLE_RAND_VEL_RANGE, PARTICLE_RAND_VEL_RANGE)
+                    .gen_range(-PARTICLE_RAND_VEL_RANGE..PARTICLE_RAND_VEL_RANGE)
                     + self.direction.x)
                     * self.vel_multiplier,
                 vely: (rand::thread_rng()
-                    .gen_range(-PARTICLE_RAND_VEL_RANGE, PARTICLE_RAND_VEL_RANGE)
+                    .gen_range(-PARTICLE_RAND_VEL_RANGE..PARTICLE_RAND_VEL_RANGE)
                     + self.direction.y)
                     * self.vel_multiplier,
                 // velx: self.direction.x,
                 // vely: self.direction.y,
                 velr: rand::thread_rng()
-                    .gen_range(-PARTICLE_RAND_ROT_RANGE, PARTICLE_RAND_ROT_RANGE)
+                    .gen_range(-PARTICLE_RAND_ROT_RANGE..PARTICLE_RAND_ROT_RANGE)
                     * self.vel_multiplier,
-                r: rand::thread_rng().gen_range(0.0, 90.0),
+                r: rand::thread_rng().gen_range(0.0..90.0),
                 lifetime: self.lifetime,
                 life_timer: 0.0,
             });
@@ -666,19 +666,19 @@ impl ParticleSystem {
                 circle: self.host_circle,
                 is_rect: self.is_rect,
                 velx: (rand::thread_rng()
-                    .gen_range(-PARTICLE_RAND_VEL_RANGE, PARTICLE_RAND_VEL_RANGE)
+                    .gen_range(-PARTICLE_RAND_VEL_RANGE..PARTICLE_RAND_VEL_RANGE)
                     + self.direction.x)
                     * self.vel_multiplier,
                 vely: (rand::thread_rng()
-                    .gen_range(-PARTICLE_RAND_VEL_RANGE, PARTICLE_RAND_VEL_RANGE)
+                    .gen_range(-PARTICLE_RAND_VEL_RANGE..PARTICLE_RAND_VEL_RANGE)
                     + self.direction.y)
                     * self.vel_multiplier,
                 // velx: self.direction.x,
                 // vely: self.direction.y,
                 velr: rand::thread_rng()
-                    .gen_range(-PARTICLE_RAND_ROT_RANGE, PARTICLE_RAND_ROT_RANGE)
+                    .gen_range(-PARTICLE_RAND_ROT_RANGE..PARTICLE_RAND_ROT_RANGE)
                     * self.vel_multiplier,
-                r: rand::thread_rng().gen_range(0.0, 90.0),
+                r: rand::thread_rng().gen_range(0.0..90.0),
                 lifetime: self.lifetime,
                 life_timer: 0.0,
             });
@@ -824,7 +824,7 @@ impl ExplConvParticleSystem {
             self.particles.push(ExplConvCircleParticle {
                 circle: self.host_circle,
                 offset,
-                r: rand::thread_rng().gen_range(0.0, 360.0),
+                r: rand::thread_rng().gen_range(0.0..360.0),
             });
         }
     }
@@ -900,7 +900,7 @@ impl Planet {
             circle,
             color,
             particle_system: ParticleSystem::new(
-                rand::thread_rng().gen_range(2.0, 3.8),
+                rand::thread_rng().gen_range(2.0..3.8),
                 0.9,
                 Rectangle::new(0.0, 0.0, 1.0, 1.0),
                 circle,
@@ -913,11 +913,11 @@ impl Planet {
             moons: Vec::with_capacity(MAX_MOONS),
         };
 
-        let r: f32 = rand::thread_rng().gen_range(0.0, 360.0);
+        let r: f32 = rand::thread_rng().gen_range(0.0..360.0);
         let clockwise = rand::thread_rng().gen_bool(0.5);
-        for i in 0..rand::thread_rng().gen_range(0, MAX_MOONS) {
+        for i in 0..rand::thread_rng().gen_range(0..MAX_MOONS) {
             planet.moons.push(RotatingParticleSystem::new(
-                rand::thread_rng().gen_range(1.0, 2.6),
+                rand::thread_rng().gen_range(1.0..2.6),
                 0.6,
                 Rectangle::new(0.0, 0.0, 1.0, 1.0),
                 smaller_circle,
@@ -927,11 +927,11 @@ impl Planet {
                 1.0,
                 r,
                 if clockwise {
-                    rand::thread_rng().gen_range(0.05, 0.15)
+                    rand::thread_rng().gen_range(0.05..0.15)
                 } else {
-                    rand::thread_rng().gen_range(-0.15, -0.05)
+                    rand::thread_rng().gen_range(-0.15..-0.05)
                 },
-                rand::thread_rng().gen_range(35.0, 200.0),
+                rand::thread_rng().gen_range(35.0..200.0),
                 0.2,
             ));
         }
@@ -983,7 +983,7 @@ impl Star {
         let mut star = Star {
             color,
             particle_system: ParticleSystem::new(
-                rand::thread_rng().gen_range(0.08, 0.2),
+                rand::thread_rng().gen_range(0.08..0.2),
                 0.85,
                 Rectangle::new(0.0, 0.0, 1.0, 1.0),
                 circle,
@@ -1007,7 +1007,7 @@ impl Star {
             star.color.b = (0.75 * 255.0) as u8;
         }
         star.particle_system
-            .force_spawn(rand::thread_rng().gen_range(20, 45));
+            .force_spawn(rand::thread_rng().gen_range(20..45));
 
         star
     }
@@ -1059,7 +1059,7 @@ enum FishState {
 
 impl Fish {
     fn new(pos: Vector, r: f32, color: Color) -> Self {
-        let anim_timer = rand::thread_rng().gen_range(0.8, 1.0);
+        let anim_timer = rand::thread_rng().gen_range(0.8..1.0);
         Self {
             pos,
             r,
@@ -1087,17 +1087,17 @@ impl Fish {
     fn set_next(&mut self, state: FishState) {
         match state {
             FishState::Idle => {
-                self.swim_time = rand::thread_rng().gen_range(1.1, 2.4);
+                self.swim_time = rand::thread_rng().gen_range(1.1..2.4);
                 self.swim_timer = self.swim_time;
                 self.anim_timer = 2.8;
                 self.anim_time = 1.6;
                 self.swim_v = 0.0;
             }
             FishState::Swim => {
-                self.swim_time = rand::thread_rng().gen_range(1.4, 2.3);
+                self.swim_time = rand::thread_rng().gen_range(1.4..2.3);
                 self.swim_timer = self.swim_time;
-                self.r = rand::thread_rng().gen_range(0.0, std::f32::consts::PI * 2.0);
-                self.anim_timer = rand::thread_rng().gen_range(1.6, 2.0);
+                self.r = rand::thread_rng().gen_range(0.0..std::f32::consts::PI * 2.0);
+                self.anim_timer = rand::thread_rng().gen_range(1.6..2.0);
                 self.anim_time = self.anim_timer;
                 self.swim_v = self.anim_timer / 8.0;
             }
@@ -1401,55 +1401,55 @@ impl GameState {
                             window.get_sound_mut(&self.s_boom)?.play(0.8)?;
                         } else if self.state == 10 {
                             let mut rng = rand::thread_rng();
-                            let rand_out = rng.gen_range(0.0, 1.0);
+                            let rand_out = rng.gen_range(0.0..1.0);
                             if rand_out < 0.6 {
                                 // spawn planet
                                 let mut expl_conv_system = ExplConvParticleSystem::new(
-                                    rng.gen_range(1.2, 1.6),
+                                    rng.gen_range(1.2..1.6),
                                     Circle::new(
                                         click_pos.x,
                                         click_pos.y,
-                                        rng.gen_range(15.0, 25.0),
+                                        rng.gen_range(15.0..25.0),
                                     ),
                                     Color::from_rgba(
-                                        rng.gen_range(0x44, 0xFF),
-                                        rng.gen_range(0x44, 0xFF),
-                                        rng.gen_range(0x44, 0xFF),
+                                        rng.gen_range(0x44..0xFF),
+                                        rng.gen_range(0x44..0xFF),
+                                        rng.gen_range(0x44..0xFF),
                                         255,
                                     ),
                                     1.0,
                                 );
                                 expl_conv_system
-                                    .activate(rng.gen_range(13, 40), rng.gen_range(150.0, 300.0));
+                                    .activate(rng.gen_range(13..40), rng.gen_range(150.0..300.0));
                                 self.expl_conv_p_systems.push(expl_conv_system);
                             } else if rand_out < 0.85 {
                                 // spawn star
                                 let rot_clockwise = rng.gen_bool(0.5);
                                 self.stars.push(Star::new(
-                                    Circle::new(click_pos.x, click_pos.y, rng.gen_range(3.0, 7.0)),
+                                    Circle::new(click_pos.x, click_pos.y, rng.gen_range(3.0..7.0)),
                                     Color::from_rgba(
-                                        rng.gen_range(0x58, 0xFF),
-                                        rng.gen_range(0x58, 0xFF),
-                                        rng.gen_range(0x58, 0xFF),
+                                        rng.gen_range(0x58..0xFF),
+                                        rng.gen_range(0x58..0xFF),
+                                        rng.gen_range(0x58..0xFF),
                                         255,
                                     ),
                                     if rot_clockwise {
-                                        rng.gen_range(0.1, 0.3)
+                                        rng.gen_range(0.1..0.3)
                                     } else {
-                                        rng.gen_range(-0.3, -0.1)
+                                        rng.gen_range(-0.3..-0.1)
                                     },
-                                    rng.gen_range(0.0, 90.0),
+                                    rng.gen_range(0.0..90.0),
                                 ));
                             } else {
                                 // spawn fish
-                                for i in 0..rng.gen_range(1, 4) {
+                                for i in 0..rng.gen_range(1..4) {
                                     self.fishes.push(Fish::new(
                                         click_pos,
-                                        rng.gen_range(0.0, 360.0),
+                                        rng.gen_range(0.0..360.0),
                                         Color::from_rgba(
-                                            rng.gen_range(0x44, 0xFF),
-                                            rng.gen_range(0x44, 0xFF),
-                                            rng.gen_range(0x44, 0xFF),
+                                            rng.gen_range(0x44..0xFF),
+                                            rng.gen_range(0x44..0xFF),
+                                            rng.gen_range(0x44..0xFF),
                                             255,
                                         ),
                                     ));
