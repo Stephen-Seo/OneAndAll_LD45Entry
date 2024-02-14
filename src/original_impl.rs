@@ -535,6 +535,121 @@ struct Particle {
     life_timer: f32,
 }
 
+impl Default for Particle {
+    fn default() -> Self {
+        Self {
+            rect: Rectangle::new(0.0, 0.0, 1.0, 1.0),
+            circle: Circle::new(0.0, 0.0, 1.0),
+            is_rect: true,
+            velx: 0.0,
+            vely: 0.0,
+            velr: 0.0,
+            r: 1.0,
+            lifetime: 1.0,
+            life_timer: 0.0,
+        }
+    }
+}
+
+impl Particle {
+    pub fn deserialize(data: &[u8], offset: usize) -> Result<(Particle, usize), ()> {
+        let mut idx: usize = 0;
+        let mut particle = Particle::default();
+
+        let (rect, rect_size) = Rectangle::deserialize(data, offset + idx)?;
+        particle.rect = rect;
+        idx += rect_size;
+
+        let (circle, circle_size) = Circle::deserialize(data, offset + idx)?;
+        particle.circle = circle;
+        idx += circle_size;
+
+        if data.len() < offset + idx + 1 {
+            return Err(());
+        }
+        particle.is_rect = data[offset + idx] != 0;
+        idx += 1;
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        particle.velx = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        particle.vely = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        particle.velr = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        particle.r = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        particle.lifetime = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        particle.life_timer = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        Ok((particle, idx))
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        bytes.append(&mut self.rect.serialize());
+        bytes.append(&mut self.circle.serialize());
+        bytes.push(if self.is_rect { 1 } else { 0 });
+        bytes.append(&mut self.velx.to_be_bytes().into());
+        bytes.append(&mut self.vely.to_be_bytes().into());
+        bytes.append(&mut self.velr.to_be_bytes().into());
+        bytes.append(&mut self.r.to_be_bytes().into());
+        bytes.append(&mut self.lifetime.to_be_bytes().into());
+        bytes.append(&mut self.life_timer.to_be_bytes().into());
+
+        bytes
+    }
+}
+
 #[derive(Clone)]
 struct ParticleSystem {
     particles: Vec<Particle>,
@@ -548,6 +663,24 @@ struct ParticleSystem {
     color: Color,
     opacity: f32,
     vel_multiplier: f32,
+}
+
+impl Default for ParticleSystem {
+    fn default() -> Self {
+        Self {
+            particles: Vec::new(),
+            spawn_timer: 0.0,
+            spawn_time: 1.0,
+            lifetime: 1.0,
+            host_rect: Rectangle::default(),
+            host_circle: Circle::default(),
+            is_rect: true,
+            direction: Vector::default(),
+            color: Color::default(),
+            opacity: 1.0,
+            vel_multiplier: 1.0,
+        }
+    }
 }
 
 impl ParticleSystem {
@@ -684,6 +817,113 @@ impl ParticleSystem {
             });
         }
     }
+
+    pub fn deserialize(data: &[u8], offset: usize) -> Result<(Self, usize), ()> {
+        let mut idx: usize = 0;
+        let mut psystem = ParticleSystem::default();
+
+        if data.len() < offset + idx + std::mem::size_of::<usize>() {
+            return Err(());
+        }
+        let particles_len: usize = usize::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<usize>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<usize>();
+
+        let mut particles: Vec<Particle> = Vec::new();
+        for _ in 0..particles_len {
+            let (particle, particle_size) = Particle::deserialize(data, offset + idx)?;
+            particles.push(particle);
+            idx += particle_size;
+        }
+        psystem.particles = particles;
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        psystem.spawn_timer = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        psystem.spawn_time = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        psystem.lifetime = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        let (rect, rect_size) = Rectangle::deserialize(data, offset + idx)?;
+        psystem.host_rect = rect;
+        idx += rect_size;
+
+        let (circle, circle_size) = Circle::deserialize(data, offset + idx)?;
+        psystem.host_circle = circle;
+        idx += circle_size;
+
+        if data.len() < offset + idx + 1 {
+            return Err(());
+        }
+        psystem.is_rect = data[offset + idx] != 0;
+        idx += 1;
+
+        let (vector, vector_size) = Vector::deserialize(data, offset + idx)?;
+        psystem.direction = vector;
+        idx += vector_size;
+
+        let (color, color_size) = Color::deserialize(data, offset + idx)?;
+        psystem.color = color;
+        idx += color_size;
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        psystem.opacity = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        psystem.vel_multiplier = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        Ok((psystem, idx))
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        let particle_count: usize = self.particles.len();
+        bytes.append(&mut particle_count.to_be_bytes().into());
+        todo!();
+
+        bytes
+    }
 }
 
 #[derive(Clone)]
@@ -692,6 +932,17 @@ struct RotatingParticleSystem {
     r: f32,
     velr: f32,
     offset: f32,
+}
+
+impl Default for RotatingParticleSystem {
+    fn default() -> Self {
+        Self {
+            particle_system: ParticleSystem::default(),
+            r: 0.0,
+            velr: 0.2,
+            offset: 0.0,
+        }
+    }
 }
 
 impl RotatingParticleSystem {
@@ -788,6 +1039,55 @@ impl RotatingParticleSystem {
                 )
                 .ok();
         }
+    }
+
+    pub fn deserialize(data: &[u8], offset: usize) -> Result<(Self, usize), ()> {
+        let mut idx: usize = 0;
+        let mut rpsystem = RotatingParticleSystem::default();
+
+        let (psystem, psystem_size) = ParticleSystem::deserialize(data, offset + idx)?;
+        rpsystem.particle_system = psystem;
+        idx += psystem_size;
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        rpsystem.r = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        rpsystem.velr = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        rpsystem.offset = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        Ok((rpsystem, idx))
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        todo!();
+
+        bytes
     }
 }
 
@@ -967,6 +1267,26 @@ impl Planet {
         for moon in &mut self.moons {
             moon.draw(window, transform);
         }
+    }
+
+    pub fn deserialize(data: &[u8], offset: usize) -> Result<Planet, ()> {
+        let mut idx: usize = 0;
+        let mut planet = Planet::new(Circle::new(0.0, 0.0, 1.0), Color::WHITE);
+
+        let (circle, circle_size) = Circle::deserialize(data, offset + idx)?;
+        planet.circle = circle;
+        idx += circle_size;
+
+        let (color, color_size) = Color::deserialize(data, offset + idx)?;
+        planet.color = color;
+        idx += color_size;
+
+        let (psystem, psystem_size) = ParticleSystem::deserialize(data, offset + idx)?;
+        planet.particle_system = psystem;
+        idx += psystem_size;
+
+        todo!("deserialize rotatingparticlesystem");
+        Err(())
     }
 }
 
@@ -1178,6 +1498,61 @@ struct SaveData {
     fishes: Vec<Fish>,
     player: Rectangle,
     joining_particles: RotatingParticleSystem,
+}
+
+const SAVE_DATA_IDENTIFIER: [u8; 4] = [0x53, 0x41, 0x56, 0x45];
+#[derive(Copy, Clone)]
+enum SaveDataDeserializeState {
+    GET_IDENTIFIER,
+    GET_PLANETS,
+}
+
+impl SaveData {
+    pub fn deserialize(data: &[u8]) -> Result<SaveData, ()> {
+        let mut idx: usize = 0;
+        let mut save_data = SaveData {
+            planets: Vec::new(),
+            stars: Vec::new(),
+            fishes: Vec::new(),
+            player: Rectangle::new(0.0, 0.0, 0.0, 0.0),
+            joining_particles: RotatingParticleSystem::new(
+                PP_GEN_RATE,
+                1.0,
+                Rectangle::new(400.0, 300.0, 16.0, 16.0),
+                Circle::new(100.0, 100.0, 32.0),
+                true,
+                Vector::new(0.0, 0.0),
+                Color::GREEN,
+                0.0,
+                0.0,
+                0.1,
+                JOINING_FAR_DIST,
+                1.0,
+            ),
+        };
+        let mut state = SaveDataDeserializeState::GET_IDENTIFIER;
+
+        while idx < data.len() {
+            match state {
+                SaveDataDeserializeState::GET_IDENTIFIER => {
+                    for i in 0..SAVE_DATA_IDENTIFIER.len() {
+                        if data[idx + i] != SAVE_DATA_IDENTIFIER[i] {
+                            return Err(());
+                        }
+                    }
+                    idx += SAVE_DATA_IDENTIFIER.len();
+                    state = SaveDataDeserializeState::GET_PLANETS;
+                }
+                SaveDataDeserializeState::GET_PLANETS => todo!(),
+            }
+        }
+
+        Err(())
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        todo!();
+    }
 }
 
 enum SaveLoadNotification {

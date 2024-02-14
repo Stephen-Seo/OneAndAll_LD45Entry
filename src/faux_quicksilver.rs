@@ -14,6 +14,12 @@ pub struct Color {
     pub a: u8,
 }
 
+impl Default for Color {
+    fn default() -> Self {
+        Self::WHITE
+    }
+}
+
 impl Color {
     pub const WHITE: Self = Self {
         r: 255,
@@ -39,6 +45,32 @@ impl Color {
     pub fn from_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self { r, g, b, a }
     }
+
+    pub fn deserialize(data: &[u8], offset: usize) -> Result<(Color, usize), ()> {
+        if data.len() < offset + 4 {
+            Err(())
+        } else {
+            let mut color = Color::WHITE;
+
+            color.r = data[offset];
+            color.g = data[offset + 1];
+            color.b = data[offset + 2];
+            color.a = data[offset + 3];
+
+            Ok((color, 4))
+        }
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        bytes.push(self.r);
+        bytes.push(self.g);
+        bytes.push(self.b);
+        bytes.push(self.a);
+
+        bytes
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -57,6 +89,61 @@ impl Rectangle {
     pub fn pos_add_vec(&mut self, v: Vector) {
         self.x += v.x;
         self.y += v.y;
+    }
+
+    pub fn deserialize(data: &[u8], offset: usize) -> Result<(Rectangle, usize), ()> {
+        if data.len() < offset + std::mem::size_of::<f32>() * 4 {
+            return Err(());
+        }
+
+        let mut idx: usize = 0;
+        let mut rect = Rectangle::new(0.0, 0.0, 0.0, 0.0);
+
+        rect.x = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+        rect.y = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+        rect.w = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+        rect.h = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        Ok((rect, idx))
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        for byte in self.x.to_be_bytes() {
+            bytes.push(byte);
+        }
+        for byte in self.y.to_be_bytes() {
+            bytes.push(byte);
+        }
+        for byte in self.w.to_be_bytes() {
+            bytes.push(byte);
+        }
+        for byte in self.h.to_be_bytes() {
+            bytes.push(byte);
+        }
+
+        bytes
     }
 }
 
@@ -78,6 +165,16 @@ pub struct Circle {
     pub r: f32,
 }
 
+impl Default for Circle {
+    fn default() -> Self {
+        Self {
+            x: 0.0,
+            y: 0.0,
+            r: 1.0,
+        }
+    }
+}
+
 impl Circle {
     pub fn new(x: f32, y: f32, r: f32) -> Self {
         Self { x, y, r }
@@ -87,12 +184,66 @@ impl Circle {
         self.x += v.x;
         self.y += v.y;
     }
+
+    pub fn deserialize(data: &[u8], offset: usize) -> Result<(Circle, usize), ()> {
+        if data.len() < 12 + offset {
+            return Err(());
+        }
+
+        let mut idx: usize = 0;
+        let mut circle = Circle::new(0.0, 0.0, 1.0);
+
+        circle.x = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        circle.y = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        circle.r = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        Ok((circle, idx))
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        for byte in self.x.to_be_bytes() {
+            bytes.push(byte);
+        }
+        for byte in self.y.to_be_bytes() {
+            bytes.push(byte);
+        }
+        for byte in self.r.to_be_bytes() {
+            bytes.push(byte);
+        }
+
+        bytes
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Vector {
     pub x: f32,
     pub y: f32,
+}
+
+impl Default for Vector {
+    fn default() -> Self {
+        Self { x: 1.0, y: 1.0 }
+    }
 }
 
 impl Add<Vector> for Vector {
@@ -145,6 +296,43 @@ impl Mul<f32> for Vector {
 impl Vector {
     pub fn new(x: f32, y: f32) -> Self {
         Self { x, y }
+    }
+
+    pub fn deserialize(data: &[u8], offset: usize) -> Result<(Vector, usize), ()> {
+        let mut idx: usize = 0;
+        let mut vector = Vector::new(0.0, 0.0);
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        vector.x = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        vector.y = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        Ok((vector, idx))
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        for byte in self.x.to_be_bytes() {
+            bytes.push(byte);
+        }
+        for byte in self.y.to_be_bytes() {
+            bytes.push(byte);
+        }
+
+        bytes
     }
 }
 
