@@ -2227,10 +2227,22 @@ impl GameState {
         // check pressed keys
         if window.get_gi_mut().get_key_pressed('s')? {
             if self.state == 10 {
-                self.save().map_err(|e| e.to_string())?;
+                let save_result = self.save().map_err(|e| e.to_string());
+                if let Err(s) = save_result {
+                    self.save_load_notification = Some(SaveLoadNotification::Save {
+                        text: Some(format!("Failed to save! {}", s)),
+                        timer: SL_NOTIF_TIME,
+                    });
+                }
             }
         } else if window.get_gi_mut().get_key_pressed('l')? {
-            self.load().map_err(|e| e.to_string())?;
+            let load_result = self.load().map_err(|e| e.to_string());
+            if let Err(s) = load_result {
+                self.save_load_notification = Some(SaveLoadNotification::Load {
+                    text: Some(format!("Failed to load! {}", s)),
+                    timer: SL_NOTIF_TIME,
+                });
+            }
         } else if window.get_gi_mut().get_key_pressed('r')? && self.state == 10 {
             self.state = 0;
             self.state_dirty = true;
