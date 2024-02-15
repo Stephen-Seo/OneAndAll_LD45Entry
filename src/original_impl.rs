@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{fs::File, io::Result as IOResult, path::PathBuf, str::FromStr};
 
 use crate::agnostic_interface::CameraInterface;
 use crate::faux_quicksilver::{Circle, Color, Rectangle, Transform, Vector, Window};
@@ -16,8 +16,9 @@ const JOINING_OPACITY_RATE: f32 = 0.13;
 const JOINING_FAR_DIST: f32 = 700.0;
 const JOINING_NEAR_DIST: f32 = 150.0;
 const DOUBLE_CLICK_TIME: f32 = 0.350;
-const SL_NOTIF_TIME: f32 = 5000.0;
+const SL_NOTIF_TIME: f32 = 7.0;
 const MAX_MOONS: usize = 5;
+const SAVE_FILENAME: &'static str = "LudumDare45_OneAndAll_SaveFile.bin";
 
 fn interp_sq_inv(x: f32) -> f32 {
     if x < 0.0 {
@@ -510,13 +511,13 @@ impl Menu {
                     true,
                     "Single click to move, Double-click to create something",
                 ),
-                //Menu::instant_text(
-                //    20.0,
-                //    HEIGHT_F - 20.0,
-                //    20.0,
-                //    true,
-                //    "S - save; L - load (can load from the start); R - reset",
-                //),
+                Menu::instant_text(
+                    20.0,
+                    HEIGHT_F - 20.0,
+                    20.0,
+                    true,
+                    "S - save; L - load (can load from the start); R - reset",
+                ),
             ],
         }
     }
@@ -2224,53 +2225,13 @@ impl GameState {
         }
 
         // check pressed keys
-        //if window.get_gi_mut().get_key_pressed('s')? {
-        // TODO implement save
-        //if self.state == 10 {
-        //    let save_data = SaveData {
-        //        planets: self.planets.clone(),
-        //        stars: self.stars.clone(),
-        //        fishes: self.fishes.clone(),
-        //        player: self.player,
-        //        joining_particles: self.joining_particles.clone(),
-        //    };
-        //    save("OneAndAll_LD45", "slot0", &save_data)?;
-        //    self.save_load_notification = Some(SaveLoadNotification::Save {
-        //        text: None,
-        //        timer: SL_NOTIF_TIME,
-        //    });
-        //}
-        //} else if window.get_gi_mut().get_key_pressed('l')? {
-        // TODO
-        //let load_result = load::<SaveData>("OneAndAll_LD45", "slot0");
-        //if let Ok(save_data) = load_result {
-        //    self.planets = save_data.planets;
-        //    self.stars = save_data.stars;
-        //    self.fishes = save_data.fishes;
-        //    self.player = save_data.player;
-        //    self.joining_particles = save_data.joining_particles;
-        //    self.expl_conv_p_systems.clear();
-        //    self.move_to = Vector {
-        //        x: self.player.x,
-        //        y: self.player.y,
-        //    };
-        //    self.camera.set_view_xy(
-        //        self.player.x - WIDTH_F / 2.0,
-        //        self.player.y - HEIGHT_F / 2.0,
-        //    );
-        //    self.dbl_click_timeout = None;
-        //    self.click_time = None;
-        //    self.click_release_time = DOUBLE_CLICK_TIME;
-
-        //    self.state = 10;
-        //    self.state_dirty = true;
-        //    self.save_load_notification = Some(SaveLoadNotification::Load {
-        //        text: None,
-        //        timer: SL_NOTIF_TIME,
-        //    });
-        //}
-        //} else if window.get_gi_mut().get_key_pressed('r')? && self.state == 10 {
-        if window.get_gi_mut().get_key_pressed('r')? && self.state == 10 {
+        if window.get_gi_mut().get_key_pressed('s')? {
+            if self.state == 10 {
+                self.save().map_err(|e| e.to_string())?;
+            }
+        } else if window.get_gi_mut().get_key_pressed('l')? {
+            self.load().map_err(|e| e.to_string())?;
+        } else if window.get_gi_mut().get_key_pressed('r')? && self.state == 10 {
             self.state = 0;
             self.state_dirty = true;
             window.get_music_mut(&self.music2)?.stop()?;
@@ -2525,15 +2486,11 @@ impl GameState {
             match sl {
                 SaveLoadNotification::Save { text, timer } => {
                     *timer -= dt;
+                    println!("save, timer is {}", timer);
                     if *timer <= 0.0 {
                         self.save_load_notification = None;
                     } else if text.is_none() {
-                        //self.font.execute(|f| {
-                        //    *text = Some(
-                        //        f.render("Saved the Game", &FontStyle::new(45.0, Color::WHITE))?,
-                        //    );
-                        //    Ok(())
-                        //})?;
+                        *text = Some(String::from("Saved the Game!"));
                     }
                 }
                 SaveLoadNotification::Load { text, timer } => {
@@ -2541,12 +2498,7 @@ impl GameState {
                     if *timer <= 0.0 {
                         self.save_load_notification = None;
                     } else if text.is_none() {
-                        //self.font.execute(|f| {
-                        //    *text = Some(
-                        //        f.render("Loaded the Game", &FontStyle::new(45.0, Color::WHITE))?,
-                        //    );
-                        //    Ok(())
-                        //})?;
+                        *text = Some(String::from("Loaded the Game!"));
                     }
                 }
             }
@@ -2646,24 +2598,104 @@ impl GameState {
             fish.draw(&self.i_fish, window, Transform::IDENTITY);
         }
 
-        // TODO
-        //if let Some(sl) = &mut self.save_load_notification {
-        //    match sl {
-        //        SaveLoadNotification::Save { text, timer }
-        //        | SaveLoadNotification::Load { text, timer } => {
-        //            if let Some(i) = text {
-        //                let mut c = Color::WHITE;
-        //                c.a = ((*timer / SL_NOTIF_TIME) as f32 * 255.0) as u8;
-        //                let mut image_rect = i.area_rect();
-        //                image_rect.x = self.camera.x + 20.0;
-        //                image_rect.y = self.camera.y + 20.0;
-        //                window.draw(&image_rect, Blended(i, c));
-        //            }
-        //        }
-        //    }
-        //}
+        if let Some(sl) = &mut self.save_load_notification {
+            match sl {
+                SaveLoadNotification::Save { text, timer }
+                | SaveLoadNotification::Load { text, timer } => {
+                    if let Some(s) = text {
+                        window.get_font_mut(&self.font)?.draw(
+                            s,
+                            20,
+                            20.0,
+                            20.0,
+                            Color::from_rgba(
+                                255,
+                                255,
+                                255,
+                                ((*timer / SL_NOTIF_TIME) as f32 * 255.0) as u8,
+                            ),
+                        )?;
+                    }
+                }
+            }
+        }
         window.get_gi_mut().end_drawing()?;
 
+        Ok(())
+    }
+
+    #[cfg(not(target_family = "wasm"))]
+    pub fn save(&mut self) -> IOResult<()> {
+        use std::io::Write;
+
+        let save_bytes = SaveData {
+            planets: self.planets.clone(),
+            stars: self.stars.clone(),
+            fishes: self.fishes.clone(),
+            player: self.player,
+            joining_particles: self.joining_particles.clone(),
+        }
+        .serialize();
+        let mut file = File::create(SAVE_FILENAME)?;
+        file.write_all(&save_bytes)?;
+        self.save_load_notification = Some(SaveLoadNotification::Save {
+            text: None,
+            timer: SL_NOTIF_TIME,
+        });
+
+        Ok(())
+    }
+
+    #[cfg(not(target_family = "wasm"))]
+    pub fn load(&mut self) -> IOResult<()> {
+        use std::io::Read;
+
+        let mut bytes = Vec::new();
+        {
+            let mut file = File::open(SAVE_FILENAME)?;
+
+            file.read_to_end(&mut bytes)?;
+        }
+        let (save_data, _) = SaveData::deserialize(&bytes).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Failed to deserialize into SaveData!",
+            )
+        })?;
+
+        self.planets = save_data.planets;
+        self.stars = save_data.stars;
+        self.fishes = save_data.fishes;
+        self.player = save_data.player;
+        self.joining_particles = save_data.joining_particles;
+        self.expl_conv_p_systems.clear();
+        self.move_to = Vector::new(self.player.x, self.player.y);
+        self.camera
+            .set_view_xy(
+                self.player.x - WIDTH_F / 2.0,
+                self.player.y - HEIGHT_F / 2.0,
+            )
+            .ok();
+        self.dbl_click_timeout = None;
+        self.click_time = None;
+        self.click_release_time = DOUBLE_CLICK_TIME;
+        self.state = 10;
+        self.state_dirty = true;
+        self.save_load_notification = Some(SaveLoadNotification::Load {
+            text: None,
+            timer: SL_NOTIF_TIME,
+        });
+
+        Ok(())
+    }
+
+    #[cfg(target_family = "wasm")]
+    pub fn save(&mut self) -> IOResult<()> {
+        Ok(())
+    }
+
+    #[cfg(target_family = "wasm")]
+    pub fn load(&mut self) -> IOResult<()> {
         Ok(())
     }
 }
