@@ -920,7 +920,27 @@ impl ParticleSystem {
 
         let particle_count: usize = self.particles.len();
         bytes.append(&mut particle_count.to_be_bytes().into());
-        todo!();
+
+        for particle in self.particles.iter() {
+            bytes.append(&mut particle.serialize());
+        }
+
+        bytes.extend(self.spawn_timer.to_be_bytes().into_iter());
+        bytes.extend(self.spawn_time.to_be_bytes().into_iter());
+        bytes.extend(self.lifetime.to_be_bytes().into_iter());
+
+        bytes.append(&mut self.host_rect.serialize());
+
+        bytes.append(&mut self.host_circle.serialize());
+
+        bytes.push(if self.is_rect { 1 } else { 0 });
+
+        bytes.append(&mut self.direction.serialize());
+
+        bytes.append(&mut self.color.serialize());
+
+        bytes.extend(self.opacity.to_be_bytes().into_iter());
+        bytes.extend(self.vel_multiplier.to_be_bytes().into_iter());
 
         bytes
     }
@@ -1085,7 +1105,11 @@ impl RotatingParticleSystem {
     pub fn serialize(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
 
-        todo!();
+        bytes.append(&mut self.particle_system.serialize());
+
+        bytes.extend(self.r.to_be_bytes().into_iter());
+        bytes.extend(self.velr.to_be_bytes().into_iter());
+        bytes.extend(self.offset.to_be_bytes().into_iter());
 
         bytes
     }
@@ -1269,7 +1293,7 @@ impl Planet {
         }
     }
 
-    pub fn deserialize(data: &[u8], offset: usize) -> Result<Planet, ()> {
+    pub fn deserialize(data: &[u8], offset: usize) -> Result<(Planet, usize), ()> {
         let mut idx: usize = 0;
         let mut planet = Planet::new(Circle::new(0.0, 0.0, 1.0), Color::WHITE);
 
@@ -1285,8 +1309,38 @@ impl Planet {
         planet.particle_system = psystem;
         idx += psystem_size;
 
-        todo!("deserialize rotatingparticlesystem");
-        Err(())
+        if data.len() < offset + idx + std::mem::size_of::<usize>() {
+            return Err(());
+        }
+        let moons_size = usize::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<usize>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<usize>();
+        for _ in 0..moons_size {
+            let (rpsystem, rps_size) = RotatingParticleSystem::deserialize(data, offset + idx)?;
+            planet.moons.push(rpsystem);
+            idx += rps_size;
+        }
+
+        Ok((planet, idx))
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        bytes.append(&mut self.circle.serialize());
+        bytes.append(&mut self.color.serialize());
+        bytes.append(&mut self.particle_system.serialize());
+
+        let moons_size = self.moons.len();
+        bytes.extend(moons_size.to_be_bytes().into_iter());
+        for i in 0..moons_size {
+            bytes.append(&mut self.moons[i].serialize());
+        }
+
+        bytes
     }
 }
 
@@ -1296,6 +1350,17 @@ struct Star {
     particle_system: ParticleSystem,
     velr: f32,
     r: f32,
+}
+
+impl Default for Star {
+    fn default() -> Self {
+        Self {
+            color: Color::default(),
+            particle_system: ParticleSystem::default(),
+            velr: 0.0,
+            r: 0.0,
+        }
+    }
 }
 
 impl Star {
@@ -1356,6 +1421,53 @@ impl Star {
             )
             .ok();
     }
+
+    pub fn deserialize(data: &[u8], offset: usize) -> Result<(Star, usize), ()> {
+        let mut idx: usize = 0;
+        let mut star = Star::default();
+
+        let (color, color_size) = Color::deserialize(data, offset + idx)?;
+        star.color = color;
+        idx += color_size;
+
+        let (psystem, psystem_size) = ParticleSystem::deserialize(data, offset + idx)?;
+        star.particle_system = psystem;
+        idx += psystem_size;
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        star.velr = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        star.r = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        Ok((star, idx))
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        bytes.append(&mut self.color.serialize());
+        bytes.append(&mut self.particle_system.serialize());
+
+        bytes.extend(self.velr.to_be_bytes().into_iter());
+        bytes.extend(self.r.to_be_bytes().into_iter());
+
+        bytes
+    }
 }
 
 #[derive(Clone)]
@@ -1375,6 +1487,23 @@ struct Fish {
 enum FishState {
     Idle,
     Swim,
+}
+
+impl Default for Fish {
+    fn default() -> Self {
+        Self {
+            pos: Vector::default(),
+            r: 0.0,
+            swim_time: 1.0,
+            swim_timer: 0.0,
+            swim_v: 0.0,
+            anim_timer: 0.0,
+            anim_time: 1.0,
+            color: Color::default(),
+            body_rect: Rectangle::default(),
+            tail_rect: Rectangle::default(),
+        }
+    }
 }
 
 impl Fish {
@@ -1489,6 +1618,108 @@ impl Fish {
             )
             .ok();
     }
+
+    pub fn deserialize(data: &[u8], offset: usize) -> Result<(Fish, usize), ()> {
+        let mut idx: usize = 0;
+        let mut fish = Fish::default();
+
+        let (pos, pos_size) = Vector::deserialize(data, offset + idx)?;
+        fish.pos = pos;
+        idx += pos_size;
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        fish.r = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        fish.swim_time = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        fish.swim_timer = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        fish.swim_v = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        fish.anim_timer = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        if data.len() < offset + idx + std::mem::size_of::<f32>() {
+            return Err(());
+        }
+        fish.anim_time = f32::from_be_bytes(
+            data[(offset + idx)..(offset + idx + std::mem::size_of::<f32>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<f32>();
+
+        let (color, color_size) = Color::deserialize(data, offset + idx)?;
+        fish.color = color;
+        idx += color_size;
+
+        let (body_rect, body_rect_size) = Rectangle::deserialize(data, offset + idx)?;
+        fish.body_rect = body_rect;
+        idx += body_rect_size;
+
+        let (tail_rect, tail_rect_size) = Rectangle::deserialize(data, offset + idx)?;
+        fish.tail_rect = tail_rect;
+        idx += tail_rect_size;
+
+        Ok((fish, idx))
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        bytes.append(&mut self.pos.serialize());
+
+        bytes.extend(self.r.to_be_bytes().into_iter());
+        bytes.extend(self.swim_time.to_be_bytes().into_iter());
+        bytes.extend(self.swim_timer.to_be_bytes().into_iter());
+        bytes.extend(self.swim_v.to_be_bytes().into_iter());
+        bytes.extend(self.anim_timer.to_be_bytes().into_iter());
+        bytes.extend(self.anim_time.to_be_bytes().into_iter());
+
+        bytes.append(&mut self.color.serialize());
+        bytes.append(&mut self.body_rect.serialize());
+        bytes.append(&mut self.tail_rect.serialize());
+
+        bytes
+    }
 }
 
 #[derive(Clone)]
@@ -1501,57 +1732,118 @@ struct SaveData {
 }
 
 const SAVE_DATA_IDENTIFIER: [u8; 4] = [0x53, 0x41, 0x56, 0x45];
-#[derive(Copy, Clone)]
-enum SaveDataDeserializeState {
-    GET_IDENTIFIER,
-    GET_PLANETS,
+
+impl Default for SaveData {
+    fn default() -> Self {
+        Self {
+            planets: Vec::new(),
+            stars: Vec::new(),
+            fishes: Vec::new(),
+            player: Rectangle::default(),
+            joining_particles: RotatingParticleSystem::default(),
+        }
+    }
 }
 
 impl SaveData {
     pub fn deserialize(data: &[u8]) -> Result<SaveData, ()> {
         let mut idx: usize = 0;
-        let mut save_data = SaveData {
-            planets: Vec::new(),
-            stars: Vec::new(),
-            fishes: Vec::new(),
-            player: Rectangle::new(0.0, 0.0, 0.0, 0.0),
-            joining_particles: RotatingParticleSystem::new(
-                PP_GEN_RATE,
-                1.0,
-                Rectangle::new(400.0, 300.0, 16.0, 16.0),
-                Circle::new(100.0, 100.0, 32.0),
-                true,
-                Vector::new(0.0, 0.0),
-                Color::GREEN,
-                0.0,
-                0.0,
-                0.1,
-                JOINING_FAR_DIST,
-                1.0,
-            ),
-        };
-        let mut state = SaveDataDeserializeState::GET_IDENTIFIER;
+        let mut save_data = SaveData::default();
 
-        while idx < data.len() {
-            match state {
-                SaveDataDeserializeState::GET_IDENTIFIER => {
-                    for i in 0..SAVE_DATA_IDENTIFIER.len() {
-                        if data[idx + i] != SAVE_DATA_IDENTIFIER[i] {
-                            return Err(());
-                        }
-                    }
-                    idx += SAVE_DATA_IDENTIFIER.len();
-                    state = SaveDataDeserializeState::GET_PLANETS;
-                }
-                SaveDataDeserializeState::GET_PLANETS => todo!(),
+        if data.len() < idx + SAVE_DATA_IDENTIFIER.len() {
+            return Err(());
+        }
+        for i in 0..SAVE_DATA_IDENTIFIER.len() {
+            if data[idx + i] != SAVE_DATA_IDENTIFIER[i] {
+                return Err(());
             }
         }
+        idx += SAVE_DATA_IDENTIFIER.len();
 
-        Err(())
+        if data.len() < idx + std::mem::size_of::<usize>() {
+            return Err(());
+        }
+        let planets_size = usize::from_be_bytes(
+            data[idx..(idx + std::mem::size_of::<usize>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<usize>();
+
+        for _ in 0..planets_size {
+            let (planet, planet_size) = Planet::deserialize(data, idx)?;
+            save_data.planets.push(planet);
+            idx += planet_size;
+        }
+
+        if data.len() < idx + std::mem::size_of::<usize>() {
+            return Err(());
+        }
+        let stars_size = usize::from_be_bytes(
+            data[idx..(idx + std::mem::size_of::<usize>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<usize>();
+
+        for _ in 0..stars_size {
+            let (star, star_size) = Star::deserialize(data, idx)?;
+            save_data.stars.push(star);
+            idx += star_size;
+        }
+
+        if data.len() < idx + std::mem::size_of::<usize>() {
+            return Err(());
+        }
+        let fishes_size = usize::from_be_bytes(
+            data[idx..(idx + std::mem::size_of::<usize>())]
+                .try_into()
+                .map_err(|_| ())?,
+        );
+        idx += std::mem::size_of::<usize>();
+
+        for _ in 0..fishes_size {
+            let (fish, fish_size) = Fish::deserialize(data, idx)?;
+            save_data.fishes.push(fish);
+            idx += fish_size;
+        }
+
+        let (p_rect, p_rect_size) = Rectangle::deserialize(data, idx)?;
+        save_data.player = p_rect;
+        idx += p_rect_size;
+
+        let (jp, jp_size) = RotatingParticleSystem::deserialize(data, idx)?;
+        save_data.joining_particles = jp;
+        idx += jp_size;
+
+        Ok(save_data)
     }
 
     pub fn serialize(&self) -> Vec<u8> {
-        todo!();
+        let mut bytes = Vec::new();
+
+        bytes.extend(SAVE_DATA_IDENTIFIER.iter());
+
+        bytes.extend(self.planets.len().to_be_bytes().into_iter());
+        for planet in &self.planets {
+            bytes.append(&mut planet.serialize());
+        }
+
+        bytes.extend(self.stars.len().to_be_bytes().into_iter());
+        for star in &self.stars {
+            bytes.append(&mut star.serialize());
+        }
+
+        bytes.extend(self.fishes.len().to_be_bytes().into_iter());
+        for fish in &self.fishes {
+            bytes.append(&mut fish.serialize());
+        }
+
+        bytes.append(&mut self.player.serialize());
+
+        bytes.append(&mut self.joining_particles.serialize());
+
+        bytes
     }
 }
 
