@@ -2,6 +2,7 @@ pub mod agnostic_interface;
 mod faux_quicksilver;
 mod original_impl;
 mod shaders;
+mod wasm_helpers;
 
 use agnostic_interface::raylib_impl::RaylibGame;
 use faux_quicksilver::Window;

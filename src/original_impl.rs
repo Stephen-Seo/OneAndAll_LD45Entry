@@ -3,6 +3,8 @@ use std::{fs::File, io::Result as IOResult, path::PathBuf, str::FromStr};
 use crate::agnostic_interface::CameraInterface;
 use crate::faux_quicksilver::{Circle, Color, Rectangle, Transform, Vector, Window};
 use rand::prelude::*;
+use std::os::raw::{c_int, c_void};
+use std::sync::mpsc::{Receiver, TryRecvError};
 
 const WIDTH_F: f32 = 800.0;
 const HEIGHT_F: f32 = 600.0;
@@ -1899,6 +1901,8 @@ pub struct GameState {
     camera: Box<dyn CameraInterface>,
     move_to: Vector,
     save_load_notification: Option<SaveLoadNotification>,
+    #[cfg(target_family = "wasm")]
+    load_recv: Option<Receiver<Vec<u8>>>,
 }
 
 impl GameState {
@@ -2028,6 +2032,8 @@ impl GameState {
             camera,
             move_to: Vector::new(400.0, 300.0),
             save_load_notification: None,
+            #[cfg(target_family = "wasm")]
+            load_recv: None,
         })
     }
 
@@ -2498,7 +2504,6 @@ impl GameState {
             match sl {
                 SaveLoadNotification::Save { text, timer } => {
                     *timer -= dt;
-                    println!("save, timer is {}", timer);
                     if *timer <= 0.0 {
                         self.save_load_notification = None;
                     } else if text.is_none() {
@@ -2518,6 +2523,57 @@ impl GameState {
 
         for fish in &mut self.fishes {
             fish.update(dt);
+        }
+
+        #[cfg(target_family = "wasm")]
+        if let Some(rx) = &mut self.load_recv {
+            let recv_result = rx.try_recv();
+            if let Ok(v) = recv_result {
+                if v.is_empty() {
+                    self.save_load_notification = Some(SaveLoadNotification::Load {
+                        text: Some(String::from("Failed to load! (callback failure)")),
+                        timer: SL_NOTIF_TIME,
+                    });
+                } else {
+                    let des_result = SaveData::deserialize(&v);
+                    if let Ok((save_data, _)) = des_result {
+                        self.planets = save_data.planets;
+                        self.stars = save_data.stars;
+                        self.fishes = save_data.fishes;
+                        self.player = save_data.player;
+                        self.joining_particles = save_data.joining_particles;
+                        self.expl_conv_p_systems.clear();
+                        self.move_to = Vector::new(self.player.x, self.player.y);
+                        self.camera
+                            .set_view_xy(
+                                self.player.x - WIDTH_F / 2.0,
+                                self.player.y - HEIGHT_F / 2.0,
+                            )
+                            .ok();
+                        self.dbl_click_timeout = None;
+                        self.click_time = None;
+                        self.click_release_time = DOUBLE_CLICK_TIME;
+                        self.state = 10;
+                        self.state_dirty = true;
+                        self.save_load_notification = Some(SaveLoadNotification::Load {
+                            text: None,
+                            timer: SL_NOTIF_TIME,
+                        });
+                    } else {
+                        self.save_load_notification = Some(SaveLoadNotification::Load {
+                            text: Some(String::from("Failed to load! (parse issue)")),
+                            timer: SL_NOTIF_TIME,
+                        });
+                    }
+                }
+                self.load_recv = None;
+            } else if recv_result == Err(TryRecvError::Disconnected) {
+                self.save_load_notification = Some(SaveLoadNotification::Load {
+                    text: Some(String::from("Failed to load! (sender disconnected)")),
+                    timer: SL_NOTIF_TIME,
+                });
+                self.load_recv = None;
+            }
         }
 
         Ok(())
@@ -2703,11 +2759,34 @@ impl GameState {
 
     #[cfg(target_family = "wasm")]
     pub fn save(&mut self) -> IOResult<()> {
+        let save_bytes = SaveData {
+            planets: self.planets.clone(),
+            stars: self.stars.clone(),
+            fishes: self.fishes.clone(),
+            player: self.player,
+            joining_particles: self.joining_particles.clone(),
+        }
+        .serialize();
+
+        crate::wasm_helpers::save_data(&save_bytes)?;
+        self.save_load_notification = Some(SaveLoadNotification::Save {
+            text: None,
+            timer: SL_NOTIF_TIME,
+        });
+
         Ok(())
     }
 
     #[cfg(target_family = "wasm")]
     pub fn load(&mut self) -> IOResult<()> {
+        let receiver = crate::wasm_helpers::load_data()?;
+
+        self.load_recv = Some(receiver);
+        self.save_load_notification = Some(SaveLoadNotification::Save {
+            text: Some(String::from("Loading...")),
+            timer: SL_NOTIF_TIME,
+        });
+
         Ok(())
     }
 }
