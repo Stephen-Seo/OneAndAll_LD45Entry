@@ -536,3 +536,48 @@ impl Window {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_de_serialize_color() {
+        let color = Color::from_rgba(1, 2, 3, 4);
+        let bytes = color.serialize();
+        let (des_color, size) =
+            Color::deserialize(&bytes, 0).expect("Should be able to deserialize Color!");
+        assert_eq!(color, des_color);
+        assert_eq!(bytes.len(), size);
+    }
+
+    #[test]
+    fn test_de_serialize_rectangle() {
+        let rect = Rectangle::new(1.0, 2.0, 3.0, 4.0);
+        let bytes = rect.serialize();
+        let (des_rect, size) =
+            Rectangle::deserialize(&bytes, 0).expect("Should be able to deserialize Rectangle!");
+        assert_eq!(rect, des_rect);
+        assert_eq!(bytes.len(), size);
+    }
+
+    #[test]
+    fn test_de_serialize_circle() {
+        let circle = Circle::new(1.0, 2.0, 3.0);
+        let bytes = circle.serialize();
+        let (des_circle, size) =
+            Circle::deserialize(&bytes, 0).expect("Should be able to deserialize Circle!");
+        assert_eq!(circle, des_circle);
+        assert_eq!(bytes.len(), size);
+    }
+
+    #[test]
+    fn test_de_serialize_vector() {
+        let vect = Vector::new(1.0, 2.0);
+        let bytes = vect.serialize();
+        let (des_vect, size) =
+            Vector::deserialize(&bytes, 0).expect("Should be able to deserialize Vector!");
+        assert_eq!(vect, des_vect);
+        assert_eq!(bytes.len(), size);
+    }
+}

@@ -522,7 +522,7 @@ impl Menu {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 struct Particle {
     rect: Rectangle,
     circle: Circle,
@@ -650,7 +650,7 @@ impl Particle {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 struct ParticleSystem {
     particles: Vec<Particle>,
     spawn_timer: f32,
@@ -946,7 +946,7 @@ impl ParticleSystem {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 struct RotatingParticleSystem {
     particle_system: ParticleSystem,
     r: f32,
@@ -1208,12 +1208,23 @@ impl ExplConvParticleSystem {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 struct Planet {
     circle: Circle,
     color: Color,
     particle_system: ParticleSystem,
     moons: Vec<RotatingParticleSystem>,
+}
+
+impl Default for Planet {
+    fn default() -> Self {
+        Self {
+            circle: Circle::default(),
+            color: Color::default(),
+            particle_system: ParticleSystem::default(),
+            moons: Vec::new(),
+        }
+    }
 }
 
 impl Planet {
@@ -1295,7 +1306,7 @@ impl Planet {
 
     pub fn deserialize(data: &[u8], offset: usize) -> Result<(Planet, usize), ()> {
         let mut idx: usize = 0;
-        let mut planet = Planet::new(Circle::new(0.0, 0.0, 1.0), Color::WHITE);
+        let mut planet = Planet::default();
 
         let (circle, circle_size) = Circle::deserialize(data, offset + idx)?;
         planet.circle = circle;
@@ -1344,7 +1355,7 @@ impl Planet {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 struct Star {
     color: Color,
     particle_system: ParticleSystem,
@@ -1470,7 +1481,7 @@ impl Star {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 struct Fish {
     pos: Vector,
     r: f32,
@@ -1722,7 +1733,7 @@ impl Fish {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 struct SaveData {
     planets: Vec<Planet>,
     stars: Vec<Star>,
@@ -1746,7 +1757,7 @@ impl Default for SaveData {
 }
 
 impl SaveData {
-    pub fn deserialize(data: &[u8]) -> Result<SaveData, ()> {
+    pub fn deserialize(data: &[u8]) -> Result<(SaveData, usize), ()> {
         let mut idx: usize = 0;
         let mut save_data = SaveData::default();
 
@@ -1816,7 +1827,7 @@ impl SaveData {
         save_data.joining_particles = jp;
         idx += jp_size;
 
-        Ok(save_data)
+        Ok((save_data, idx))
     }
 
     pub fn serialize(&self) -> Vec<u8> {
@@ -2654,5 +2665,722 @@ impl GameState {
         window.get_gi_mut().end_drawing()?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_de_serialize_particle() {
+        let mut particle = Particle::default();
+        particle.rect.x = 1.0;
+        particle.rect.y = 2.0;
+        particle.rect.w = 3.0;
+        particle.rect.h = 4.0;
+        particle.circle.x = 5.0;
+        particle.circle.y = 6.0;
+        particle.circle.r = 7.0;
+        particle.is_rect = true;
+        particle.velx = 8.0;
+        particle.vely = 9.0;
+        particle.velr = 10.0;
+        particle.r = 11.0;
+        particle.lifetime = 12.0;
+        particle.life_timer = 13.0;
+        let bytes = particle.serialize();
+        let (des_particle, size) =
+            Particle::deserialize(&bytes, 0).expect("Should be able to deserialize Particle!");
+        assert_eq!(particle, des_particle);
+        assert_eq!(bytes.len(), size);
+
+        let mut particle = Particle::default();
+        particle.rect.x = 14.0;
+        particle.rect.y = 15.0;
+        particle.rect.w = 16.0;
+        particle.rect.h = 17.0;
+        particle.circle.x = 18.0;
+        particle.circle.y = 19.0;
+        particle.circle.r = 20.0;
+        particle.is_rect = false;
+        particle.velx = 21.0;
+        particle.vely = 22.0;
+        particle.velr = 23.0;
+        particle.r = 24.0;
+        particle.lifetime = 25.0;
+        particle.life_timer = 26.0;
+        let bytes = particle.serialize();
+        let (des_particle, size) =
+            Particle::deserialize(&bytes, 0).expect("Should be able to deserialize Particle!");
+        assert_eq!(particle, des_particle);
+        assert_eq!(bytes.len(), size);
+    }
+
+    #[test]
+    fn test_de_serialize_particle_system() {
+        let mut ps = ParticleSystem::default();
+        let mut particle = Particle::default();
+        particle.rect.x = 1.0;
+        particle.rect.y = 2.0;
+        particle.rect.w = 3.0;
+        particle.rect.h = 4.0;
+        particle.circle.x = 5.0;
+        particle.circle.y = 6.0;
+        particle.circle.r = 7.0;
+        particle.is_rect = true;
+        particle.velx = 8.0;
+        particle.vely = 9.0;
+        particle.velr = 10.0;
+        particle.r = 11.0;
+        particle.lifetime = 12.0;
+        particle.life_timer = 13.0;
+        ps.particles.push(particle);
+
+        let mut particle = Particle::default();
+        particle.rect.x = 14.0;
+        particle.rect.y = 15.0;
+        particle.rect.w = 16.0;
+        particle.rect.h = 17.0;
+        particle.circle.x = 18.0;
+        particle.circle.y = 19.0;
+        particle.circle.r = 20.0;
+        particle.is_rect = false;
+        particle.velx = 21.0;
+        particle.vely = 22.0;
+        particle.velr = 23.0;
+        particle.r = 24.0;
+        particle.lifetime = 25.0;
+        particle.life_timer = 26.0;
+        ps.particles.push(particle);
+
+        ps.spawn_timer = 27.0;
+        ps.spawn_time = 28.0;
+        ps.lifetime = 29.0;
+        ps.host_rect.x = 30.0;
+        ps.host_rect.y = 31.0;
+        ps.host_rect.w = 32.0;
+        ps.host_rect.h = 33.0;
+        ps.host_circle.x = 34.0;
+        ps.host_circle.y = 35.0;
+        ps.host_circle.r = 36.0;
+        ps.is_rect = true;
+        ps.direction.x = 37.0;
+        ps.direction.y = 38.0;
+        ps.color.r = 39;
+        ps.color.g = 40;
+        ps.color.b = 41;
+        ps.color.a = 42;
+        ps.opacity = 43.0;
+        ps.vel_multiplier = 44.0;
+
+        let bytes = ps.serialize();
+        let (des_ps, size) = ParticleSystem::deserialize(&bytes, 0)
+            .expect("Should be able to deserialize ParticleSystem!");
+        assert_eq!(ps, des_ps);
+        assert_eq!(bytes.len(), size);
+
+        let mut ps = ParticleSystem::default();
+        let mut particle = Particle::default();
+        particle.rect.x = 45.0;
+        particle.rect.y = 46.0;
+        particle.rect.w = 47.0;
+        particle.rect.h = 48.0;
+        particle.circle.x = 49.0;
+        particle.circle.y = 50.0;
+        particle.circle.r = 51.0;
+        particle.is_rect = true;
+        particle.velx = 52.0;
+        particle.vely = 53.0;
+        particle.velr = 54.0;
+        particle.r = 55.0;
+        particle.lifetime = 56.0;
+        particle.life_timer = 57.0;
+        ps.particles.push(particle);
+
+        let mut particle = Particle::default();
+        particle.rect.x = 58.0;
+        particle.rect.y = 59.0;
+        particle.rect.w = 60.0;
+        particle.rect.h = 61.0;
+        particle.circle.x = 62.0;
+        particle.circle.y = 63.0;
+        particle.circle.r = 64.0;
+        particle.is_rect = false;
+        particle.velx = 65.0;
+        particle.vely = 66.0;
+        particle.velr = 67.0;
+        particle.r = 68.0;
+        particle.lifetime = 69.0;
+        particle.life_timer = 70.0;
+        ps.particles.push(particle);
+
+        ps.spawn_timer = 71.0;
+        ps.spawn_time = 72.0;
+        ps.lifetime = 73.0;
+        ps.host_rect.x = 74.0;
+        ps.host_rect.y = 75.0;
+        ps.host_rect.w = 76.0;
+        ps.host_rect.h = 77.0;
+        ps.host_circle.x = 78.0;
+        ps.host_circle.y = 79.0;
+        ps.host_circle.r = 80.0;
+        ps.is_rect = false;
+        ps.direction.x = 81.0;
+        ps.direction.y = 82.0;
+        ps.color.r = 83;
+        ps.color.g = 84;
+        ps.color.b = 85;
+        ps.color.a = 86;
+        ps.opacity = 87.0;
+        ps.vel_multiplier = 88.0;
+
+        let bytes = ps.serialize();
+        let (des_ps, size) = ParticleSystem::deserialize(&bytes, 0)
+            .expect("Should be able to deserialize ParticleSystem!");
+        assert_eq!(ps, des_ps);
+        assert_eq!(bytes.len(), size);
+    }
+
+    #[test]
+    fn test_de_serialize_rotating_particle_system() {
+        let mut ps = ParticleSystem::default();
+        let mut particle = Particle::default();
+        particle.rect.x = 1.0;
+        particle.rect.y = 2.0;
+        particle.rect.w = 3.0;
+        particle.rect.h = 4.0;
+        particle.circle.x = 5.0;
+        particle.circle.y = 6.0;
+        particle.circle.r = 7.0;
+        particle.is_rect = true;
+        particle.velx = 8.0;
+        particle.vely = 9.0;
+        particle.velr = 10.0;
+        particle.r = 11.0;
+        particle.lifetime = 12.0;
+        particle.life_timer = 13.0;
+        ps.particles.push(particle);
+
+        let mut particle = Particle::default();
+        particle.rect.x = 14.0;
+        particle.rect.y = 15.0;
+        particle.rect.w = 16.0;
+        particle.rect.h = 17.0;
+        particle.circle.x = 18.0;
+        particle.circle.y = 19.0;
+        particle.circle.r = 20.0;
+        particle.is_rect = false;
+        particle.velx = 21.0;
+        particle.vely = 22.0;
+        particle.velr = 23.0;
+        particle.r = 24.0;
+        particle.lifetime = 25.0;
+        particle.life_timer = 26.0;
+        ps.particles.push(particle);
+
+        ps.spawn_timer = 27.0;
+        ps.spawn_time = 28.0;
+        ps.lifetime = 29.0;
+        ps.host_rect.x = 30.0;
+        ps.host_rect.y = 31.0;
+        ps.host_rect.w = 32.0;
+        ps.host_rect.h = 33.0;
+        ps.host_circle.x = 34.0;
+        ps.host_circle.y = 35.0;
+        ps.host_circle.r = 36.0;
+        ps.is_rect = true;
+        ps.direction.x = 37.0;
+        ps.direction.y = 38.0;
+        ps.color.r = 39;
+        ps.color.g = 40;
+        ps.color.b = 41;
+        ps.color.a = 42;
+        ps.opacity = 43.0;
+        ps.vel_multiplier = 44.0;
+
+        let mut rps = RotatingParticleSystem::default();
+        rps.particle_system = ps;
+        rps.r = 45.0;
+        rps.velr = 46.0;
+        rps.offset = 47.0;
+
+        let bytes = rps.serialize();
+        let (des_rps, size) = RotatingParticleSystem::deserialize(&bytes, 0)
+            .expect("Should be able to deserialize RotatingParticleSystem!");
+        assert_eq!(rps, des_rps);
+        assert_eq!(bytes.len(), size);
+    }
+
+    #[test]
+    fn test_de_serialize_planet() {
+        let mut planet = Planet::default();
+        planet.circle.x = 1.0;
+        planet.circle.y = 2.0;
+        planet.circle.r = 3.0;
+        planet.color.r = 4;
+        planet.color.g = 5;
+        planet.color.b = 6;
+        planet.color.a = 7;
+
+        let mut particle = Particle::default();
+        particle.rect.x = 8.0;
+        particle.rect.y = 9.0;
+        particle.rect.w = 10.0;
+        particle.rect.h = 11.0;
+        particle.circle.x = 12.0;
+        particle.circle.y = 13.0;
+        particle.circle.r = 14.0;
+        particle.is_rect = true;
+        particle.velx = 15.0;
+        particle.vely = 16.0;
+        particle.velr = 17.0;
+        particle.r = 18.0;
+        particle.lifetime = 19.0;
+        particle.life_timer = 20.0;
+        planet.particle_system.particles.push(particle);
+
+        let mut particle = Particle::default();
+        particle.rect.x = 21.0;
+        particle.rect.y = 22.0;
+        particle.rect.w = 23.0;
+        particle.rect.h = 24.0;
+        particle.circle.x = 25.0;
+        particle.circle.y = 26.0;
+        particle.circle.r = 27.0;
+        particle.is_rect = false;
+        particle.velx = 28.0;
+        particle.vely = 29.0;
+        particle.velr = 30.0;
+        particle.r = 31.0;
+        particle.lifetime = 32.0;
+        particle.life_timer = 33.0;
+        planet.particle_system.particles.push(particle);
+
+        planet.particle_system.spawn_timer = 34.0;
+        planet.particle_system.spawn_time = 35.0;
+        planet.particle_system.lifetime = 36.0;
+        planet.particle_system.host_rect.x = 37.0;
+        planet.particle_system.host_rect.y = 38.0;
+        planet.particle_system.host_rect.w = 39.0;
+        planet.particle_system.host_rect.h = 40.0;
+        planet.particle_system.host_circle.x = 41.0;
+        planet.particle_system.host_circle.y = 42.0;
+        planet.particle_system.host_circle.r = 43.0;
+        planet.particle_system.is_rect = true;
+        planet.particle_system.direction.x = 44.0;
+        planet.particle_system.direction.y = 45.0;
+        planet.particle_system.color.r = 46;
+        planet.particle_system.color.g = 47;
+        planet.particle_system.color.b = 48;
+        planet.particle_system.color.a = 49;
+        planet.particle_system.opacity = 50.0;
+        planet.particle_system.vel_multiplier = 51.0;
+
+        let mut rps = RotatingParticleSystem::default();
+        rps.particle_system = planet.particle_system.clone();
+        rps.r = 52.0;
+        rps.velr = 53.0;
+        rps.offset = 54.0;
+        planet.moons.push(rps);
+
+        let mut rps = RotatingParticleSystem::default();
+        rps.particle_system = ParticleSystem::default();
+        rps.r = 55.0;
+        rps.velr = 56.0;
+        rps.offset = 57.0;
+        planet.moons.push(rps);
+
+        let bytes = planet.serialize();
+        let (des_planet, size) =
+            Planet::deserialize(&bytes, 0).expect("Should be able to deserialize Planet!");
+        assert_eq!(planet, des_planet);
+        assert_eq!(bytes.len(), size);
+    }
+
+    #[test]
+    fn test_de_serialize_star() {
+        let mut star = Star::default();
+        star.color.r = 1;
+        star.color.g = 2;
+        star.color.b = 3;
+        star.color.a = 4;
+
+        let mut particle = Particle::default();
+        particle.rect.x = 5.0;
+        particle.rect.y = 6.0;
+        particle.rect.w = 7.0;
+        particle.rect.h = 8.0;
+        particle.circle.x = 9.0;
+        particle.circle.y = 10.0;
+        particle.circle.r = 11.0;
+        particle.is_rect = true;
+        particle.velx = 12.0;
+        particle.vely = 13.0;
+        particle.velr = 14.0;
+        particle.r = 15.0;
+        particle.lifetime = 16.0;
+        particle.life_timer = 17.0;
+        star.particle_system.particles.push(particle);
+
+        let mut particle = Particle::default();
+        particle.rect.x = 18.0;
+        particle.rect.y = 19.0;
+        particle.rect.w = 20.0;
+        particle.rect.h = 21.0;
+        particle.circle.x = 22.0;
+        particle.circle.y = 23.0;
+        particle.circle.r = 24.0;
+        particle.is_rect = false;
+        particle.velx = 25.0;
+        particle.vely = 26.0;
+        particle.velr = 27.0;
+        particle.r = 28.0;
+        particle.lifetime = 29.0;
+        particle.life_timer = 30.0;
+        star.particle_system.particles.push(particle);
+
+        star.particle_system.spawn_timer = 31.0;
+        star.particle_system.spawn_time = 32.0;
+        star.particle_system.lifetime = 33.0;
+        star.particle_system.host_rect.x = 34.0;
+        star.particle_system.host_rect.y = 35.0;
+        star.particle_system.host_rect.w = 36.0;
+        star.particle_system.host_rect.h = 37.0;
+        star.particle_system.host_circle.x = 38.0;
+        star.particle_system.host_circle.y = 39.0;
+        star.particle_system.host_circle.r = 40.0;
+        star.particle_system.is_rect = true;
+        star.particle_system.direction.x = 41.0;
+        star.particle_system.direction.y = 42.0;
+        star.particle_system.color.r = 43;
+        star.particle_system.color.g = 44;
+        star.particle_system.color.b = 45;
+        star.particle_system.color.a = 46;
+        star.particle_system.opacity = 47.0;
+        star.particle_system.vel_multiplier = 48.0;
+
+        star.velr = 49.0;
+        star.r = 50.0;
+
+        let bytes = star.serialize();
+        let (des_star, size) =
+            Star::deserialize(&bytes, 0).expect("Should be able to deserialize Star!");
+        assert_eq!(star, des_star);
+        assert_eq!(bytes.len(), size);
+    }
+
+    #[test]
+    fn test_de_serialize_fish() {
+        let mut fish = Fish::default();
+        fish.pos.x = 1.0;
+        fish.pos.y = 2.0;
+        fish.r = 3.0;
+        fish.swim_time = 4.0;
+        fish.swim_timer = 5.0;
+        fish.swim_v = 6.0;
+        fish.anim_timer = 7.0;
+        fish.anim_time = 8.0;
+        fish.color.r = 9;
+        fish.color.g = 10;
+        fish.color.b = 11;
+        fish.color.a = 12;
+        fish.body_rect.x = 13.0;
+        fish.body_rect.y = 14.0;
+        fish.body_rect.w = 15.0;
+        fish.body_rect.h = 16.0;
+        fish.tail_rect.x = 17.0;
+        fish.tail_rect.y = 18.0;
+        fish.tail_rect.w = 19.0;
+        fish.tail_rect.h = 20.0;
+
+        let bytes = fish.serialize();
+        let (des_fish, size) =
+            Fish::deserialize(&bytes, 0).expect("Should be able to deserialize Fish!");
+        assert_eq!(fish, des_fish);
+        assert_eq!(bytes.len(), size);
+    }
+
+    #[test]
+    fn test_de_serialize_save_data() {
+        let mut save_data = SaveData::default();
+        let mut planet = Planet::default();
+        planet.circle.x = 1.0;
+        planet.circle.y = 2.0;
+        planet.circle.r = 3.0;
+        planet.color.r = 4;
+        planet.color.g = 5;
+        planet.color.b = 6;
+        planet.color.a = 7;
+
+        let mut particle = Particle::default();
+        particle.rect.x = 8.0;
+        particle.rect.y = 9.0;
+        particle.rect.w = 10.0;
+        particle.rect.h = 11.0;
+        particle.circle.x = 12.0;
+        particle.circle.y = 13.0;
+        particle.circle.r = 14.0;
+        particle.is_rect = true;
+        particle.velx = 15.0;
+        particle.vely = 16.0;
+        particle.velr = 17.0;
+        particle.r = 18.0;
+        particle.lifetime = 19.0;
+        particle.life_timer = 20.0;
+        planet.particle_system.particles.push(particle);
+
+        let mut particle = Particle::default();
+        particle.rect.x = 21.0;
+        particle.rect.y = 22.0;
+        particle.rect.w = 23.0;
+        particle.rect.h = 24.0;
+        particle.circle.x = 25.0;
+        particle.circle.y = 26.0;
+        particle.circle.r = 27.0;
+        particle.is_rect = false;
+        particle.velx = 28.0;
+        particle.vely = 29.0;
+        particle.velr = 30.0;
+        particle.r = 31.0;
+        particle.lifetime = 32.0;
+        particle.life_timer = 33.0;
+        planet.particle_system.particles.push(particle);
+
+        planet.particle_system.spawn_timer = 34.0;
+        planet.particle_system.spawn_time = 35.0;
+        planet.particle_system.lifetime = 36.0;
+        planet.particle_system.host_rect.x = 37.0;
+        planet.particle_system.host_rect.y = 38.0;
+        planet.particle_system.host_rect.w = 39.0;
+        planet.particle_system.host_rect.h = 40.0;
+        planet.particle_system.host_circle.x = 41.0;
+        planet.particle_system.host_circle.y = 42.0;
+        planet.particle_system.host_circle.r = 43.0;
+        planet.particle_system.is_rect = true;
+        planet.particle_system.direction.x = 44.0;
+        planet.particle_system.direction.y = 45.0;
+        planet.particle_system.color.r = 46;
+        planet.particle_system.color.g = 47;
+        planet.particle_system.color.b = 48;
+        planet.particle_system.color.a = 49;
+        planet.particle_system.opacity = 50.0;
+        planet.particle_system.vel_multiplier = 51.0;
+
+        let mut rps = RotatingParticleSystem::default();
+        rps.particle_system = planet.particle_system.clone();
+        rps.r = 52.0;
+        rps.velr = 53.0;
+        rps.offset = 54.0;
+        planet.moons.push(rps);
+
+        let mut rps = RotatingParticleSystem::default();
+        rps.particle_system = ParticleSystem::default();
+        rps.r = 55.0;
+        rps.velr = 56.0;
+        rps.offset = 57.0;
+        planet.moons.push(rps);
+
+        save_data.planets.push(planet.clone());
+
+        planet.color.r = 58;
+        planet.color.g = 59;
+        planet.color.b = 60;
+        planet.color.a = 61;
+
+        save_data.planets.push(planet.clone());
+
+        planet.color.r = 62;
+        planet.color.g = 63;
+        planet.color.b = 64;
+        planet.color.a = 65;
+
+        save_data.planets.push(planet);
+
+        let mut star = Star::default();
+        star.color.r = 1;
+        star.color.g = 2;
+        star.color.b = 3;
+        star.color.a = 4;
+
+        let mut particle = Particle::default();
+        particle.rect.x = 5.0;
+        particle.rect.y = 6.0;
+        particle.rect.w = 7.0;
+        particle.rect.h = 8.0;
+        particle.circle.x = 9.0;
+        particle.circle.y = 10.0;
+        particle.circle.r = 11.0;
+        particle.is_rect = true;
+        particle.velx = 12.0;
+        particle.vely = 13.0;
+        particle.velr = 14.0;
+        particle.r = 15.0;
+        particle.lifetime = 16.0;
+        particle.life_timer = 17.0;
+        star.particle_system.particles.push(particle);
+
+        let mut particle = Particle::default();
+        particle.rect.x = 18.0;
+        particle.rect.y = 19.0;
+        particle.rect.w = 20.0;
+        particle.rect.h = 21.0;
+        particle.circle.x = 22.0;
+        particle.circle.y = 23.0;
+        particle.circle.r = 24.0;
+        particle.is_rect = false;
+        particle.velx = 25.0;
+        particle.vely = 26.0;
+        particle.velr = 27.0;
+        particle.r = 28.0;
+        particle.lifetime = 29.0;
+        particle.life_timer = 30.0;
+        star.particle_system.particles.push(particle);
+
+        star.particle_system.spawn_timer = 31.0;
+        star.particle_system.spawn_time = 32.0;
+        star.particle_system.lifetime = 33.0;
+        star.particle_system.host_rect.x = 34.0;
+        star.particle_system.host_rect.y = 35.0;
+        star.particle_system.host_rect.w = 36.0;
+        star.particle_system.host_rect.h = 37.0;
+        star.particle_system.host_circle.x = 38.0;
+        star.particle_system.host_circle.y = 39.0;
+        star.particle_system.host_circle.r = 40.0;
+        star.particle_system.is_rect = true;
+        star.particle_system.direction.x = 41.0;
+        star.particle_system.direction.y = 42.0;
+        star.particle_system.color.r = 43;
+        star.particle_system.color.g = 44;
+        star.particle_system.color.b = 45;
+        star.particle_system.color.a = 46;
+        star.particle_system.opacity = 47.0;
+        star.particle_system.vel_multiplier = 48.0;
+
+        star.velr = 49.0;
+        star.r = 50.0;
+
+        save_data.stars.push(star.clone());
+
+        star.color.r = 51;
+        star.color.g = 52;
+        star.color.b = 53;
+        star.color.a = 54;
+
+        save_data.stars.push(star.clone());
+
+        star.color.r = 55;
+        star.color.g = 56;
+        star.color.b = 57;
+        star.color.a = 58;
+
+        save_data.stars.push(star);
+
+        let mut fish = Fish::default();
+        fish.pos.x = 1.0;
+        fish.pos.y = 2.0;
+        fish.r = 3.0;
+        fish.swim_time = 4.0;
+        fish.swim_timer = 5.0;
+        fish.swim_v = 6.0;
+        fish.anim_timer = 7.0;
+        fish.anim_time = 8.0;
+        fish.color.r = 9;
+        fish.color.g = 10;
+        fish.color.b = 11;
+        fish.color.a = 12;
+        fish.body_rect.x = 13.0;
+        fish.body_rect.y = 14.0;
+        fish.body_rect.w = 15.0;
+        fish.body_rect.h = 16.0;
+        fish.tail_rect.x = 17.0;
+        fish.tail_rect.y = 18.0;
+        fish.tail_rect.w = 19.0;
+        fish.tail_rect.h = 20.0;
+
+        save_data.fishes.push(fish.clone());
+
+        fish.pos.x = 21.0;
+        fish.pos.y = 22.0;
+        fish.r = 23.0;
+
+        save_data.fishes.push(fish.clone());
+
+        fish.pos.x = 24.0;
+        fish.pos.y = 25.0;
+        fish.r = 26.0;
+
+        save_data.fishes.push(fish);
+
+        save_data.player.x = 100.0;
+        save_data.player.y = 101.0;
+        save_data.player.w = 102.0;
+        save_data.player.h = 103.0;
+
+        let mut ps = ParticleSystem::default();
+        let mut particle = Particle::default();
+        particle.rect.x = 1.0;
+        particle.rect.y = 2.0;
+        particle.rect.w = 3.0;
+        particle.rect.h = 4.0;
+        particle.circle.x = 5.0;
+        particle.circle.y = 6.0;
+        particle.circle.r = 7.0;
+        particle.is_rect = true;
+        particle.velx = 8.0;
+        particle.vely = 9.0;
+        particle.velr = 10.0;
+        particle.r = 11.0;
+        particle.lifetime = 12.0;
+        particle.life_timer = 13.0;
+        ps.particles.push(particle);
+
+        let mut particle = Particle::default();
+        particle.rect.x = 14.0;
+        particle.rect.y = 15.0;
+        particle.rect.w = 16.0;
+        particle.rect.h = 17.0;
+        particle.circle.x = 18.0;
+        particle.circle.y = 19.0;
+        particle.circle.r = 20.0;
+        particle.is_rect = false;
+        particle.velx = 21.0;
+        particle.vely = 22.0;
+        particle.velr = 23.0;
+        particle.r = 24.0;
+        particle.lifetime = 25.0;
+        particle.life_timer = 26.0;
+        ps.particles.push(particle);
+
+        ps.spawn_timer = 27.0;
+        ps.spawn_time = 28.0;
+        ps.lifetime = 29.0;
+        ps.host_rect.x = 30.0;
+        ps.host_rect.y = 31.0;
+        ps.host_rect.w = 32.0;
+        ps.host_rect.h = 33.0;
+        ps.host_circle.x = 34.0;
+        ps.host_circle.y = 35.0;
+        ps.host_circle.r = 36.0;
+        ps.is_rect = true;
+        ps.direction.x = 37.0;
+        ps.direction.y = 38.0;
+        ps.color.r = 39;
+        ps.color.g = 40;
+        ps.color.b = 41;
+        ps.color.a = 42;
+        ps.opacity = 43.0;
+        ps.vel_multiplier = 44.0;
+
+        save_data.joining_particles.particle_system = ps;
+        save_data.joining_particles.r = 45.0;
+        save_data.joining_particles.velr = 46.0;
+        save_data.joining_particles.offset = 47.0;
+
+        let bytes = save_data.serialize();
+        let (des_save_data, size) =
+            SaveData::deserialize(&bytes).expect("Should be able to deserialize SaveData!");
+        assert_eq!(save_data, des_save_data);
+        assert_eq!(bytes.len(), size);
     }
 }
