@@ -1,6 +1,16 @@
 EM_ENV = "${HOME}/git/emsdk/emsdk_env.sh"
 CC = source ${EM_ENV} && emcc
 
+RUST_SOURCES = \
+	../src/agnostic_interface/raylib_impl.rs \
+	../src/bin.rs \
+	../src/agnostic_interface.rs \
+	../src/shaders.rs \
+	../src/faux_quicksilver.rs \
+	../src/lib.rs \
+	../src/original_impl.rs \
+	../src/wasm_helpers.rs
+
 all: ld45.html
 
 ld45.html: src/main.c ../target/wasm32-unknown-emscripten/release/libld45_lib.a
@@ -19,7 +29,7 @@ ld45.html: src/main.c ../target/wasm32-unknown-emscripten/release/libld45_lib.a
 #-fsanitize=address \
 #-sWARN_UNALIGNED=1 \
 
-../target/wasm32-unknown-emscripten/release/libld45_lib.a: ../src/lib.rs
+../target/wasm32-unknown-emscripten/release/libld45_lib.a: ${RUST_SOURCES}
 	cd .. && source ${EM_ENV} && cargo build --lib --release --target wasm32-unknown-emscripten
 #	cd .. && source ${EM_ENV} && cargo rustc --lib --release --target wasm32-unknown-emscripten -- -C link-args=-Wl,-zstack-size=8388608
 
