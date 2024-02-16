@@ -62,14 +62,7 @@ impl Color {
     }
 
     pub fn serialize(&self) -> Vec<u8> {
-        let mut bytes = Vec::new();
-
-        bytes.push(self.r);
-        bytes.push(self.g);
-        bytes.push(self.b);
-        bytes.push(self.a);
-
-        bytes
+        vec![self.r, self.g, self.b, self.a]
     }
 }
 

@@ -1,12 +1,18 @@
+#[cfg(target_family = "wasm")]
 use std::os::raw::*;
+#[cfg(not(target_family = "wasm"))]
+use std::sync::mpsc::Receiver;
+#[cfg(target_family = "wasm")]
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 #[cfg(not(target_family = "wasm"))]
-pub fn save_data(data: &[u8]) -> std::io::Result<()> {
+#[allow(dead_code)]
+pub fn save_data(_data: &[u8]) -> std::io::Result<()> {
     Err(std::io::Error::other("Unimplemented for native"))
 }
 
 #[cfg(not(target_family = "wasm"))]
+#[allow(dead_code)]
 pub fn load_data() -> std::io::Result<Receiver<Vec<u8>>> {
     Err(std::io::Error::other("Unimplemented for native"))
 }
@@ -14,8 +20,7 @@ pub fn load_data() -> std::io::Result<Receiver<Vec<u8>>> {
 #[cfg(target_family = "wasm")]
 #[no_mangle]
 pub extern "C" fn ld45_load_rust_handler(usr: *mut c_void, data: *const c_void, len: c_int) {
-    let mut sender_box: Box<Sender<Vec<u8>>> =
-        unsafe { Box::from_raw(usr as *mut Sender<Vec<u8>>) };
+    let sender_box: Box<Sender<Vec<u8>>> = unsafe { Box::from_raw(usr as *mut Sender<Vec<u8>>) };
 
     if data.is_null() || len == 0 {
         (*sender_box).send(Vec::new()).ok();
@@ -50,10 +55,10 @@ pub fn save_data(data: &[u8]) -> std::io::Result<()> {
 #[cfg(target_family = "wasm")]
 pub fn load_data() -> std::io::Result<Receiver<Vec<u8>>> {
     let (tx, rx) = channel();
-    let mut handler = Box::new(tx);
+    let handler = Box::new(tx);
 
     unsafe {
-        let mut ptr = Box::into_raw(handler);
+        let ptr = Box::into_raw(handler);
         ld45_load_async(ptr as *mut c_void);
     }
 

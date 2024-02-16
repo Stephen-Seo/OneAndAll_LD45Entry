@@ -1,14 +1,16 @@
-use std::{fs::File, io::Result as IOResult, path::PathBuf, str::FromStr};
+#[cfg(not(target_family = "wasm"))]
+use std::fs::File;
+use std::{io::Result as IOResult, path::PathBuf, str::FromStr};
 
 use crate::agnostic_interface::CameraInterface;
 use crate::faux_quicksilver::{Circle, Color, Rectangle, Transform, Vector, Window};
 use rand::prelude::*;
-use std::os::raw::{c_int, c_void};
+#[cfg(target_family = "wasm")]
 use std::sync::mpsc::{Receiver, TryRecvError};
 
 const WIDTH_F: f32 = 800.0;
 const HEIGHT_F: f32 = 600.0;
-const MUSIC2_LENGTH: f32 = 2.0 * 60.0 * 1000.0;
+//const MUSIC2_LENGTH: f32 = 2.0 * 60.0 * 1000.0;
 const TEXT_RATE: f32 = 0.1;
 const PP_GEN_RATE: f32 = 0.075;
 const PARTICLE_RAND_VEL_RANGE: f32 = 80.0;
@@ -20,7 +22,8 @@ const JOINING_NEAR_DIST: f32 = 150.0;
 const DOUBLE_CLICK_TIME: f32 = 0.350;
 const SL_NOTIF_TIME: f32 = 7.0;
 const MAX_MOONS: usize = 5;
-const SAVE_FILENAME: &'static str = "LudumDare45_OneAndAll_SaveFile.bin";
+#[cfg(not(target_family = "wasm"))]
+const SAVE_FILENAME: &str = "LudumDare45_OneAndAll_SaveFile.bin";
 
 fn interp_sq_inv(x: f32) -> f32 {
     if x < 0.0 {
@@ -41,6 +44,8 @@ fn interp_sq(x: f32) -> f32 {
     x * x
 }
 
+#[allow(unused_variables)]
+#[allow(dead_code)]
 enum MenuItemType {
     Button {
         text: &'static str,
@@ -66,6 +71,7 @@ enum MenuItemType {
     },
 }
 
+#[allow(dead_code)]
 struct MenuItem {
     x: f32,
     y: f32,
@@ -87,6 +93,7 @@ struct Menu {
     items: Vec<MenuItem>,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl Menu {
     fn button(
         x: f32,
@@ -687,6 +694,7 @@ impl Default for ParticleSystem {
 }
 
 impl ParticleSystem {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         spawn_time: f32,
         lifetime: f32,
@@ -796,7 +804,7 @@ impl ParticleSystem {
     }
 
     fn force_spawn(&mut self, count: usize) {
-        for i in 0..count {
+        for _ in 0..count {
             self.particles.push(Particle {
                 rect: self.host_rect,
                 circle: self.host_circle,
@@ -928,9 +936,9 @@ impl ParticleSystem {
             bytes.append(&mut particle.serialize());
         }
 
-        bytes.extend(self.spawn_timer.to_be_bytes().into_iter());
-        bytes.extend(self.spawn_time.to_be_bytes().into_iter());
-        bytes.extend(self.lifetime.to_be_bytes().into_iter());
+        bytes.extend(self.spawn_timer.to_be_bytes());
+        bytes.extend(self.spawn_time.to_be_bytes());
+        bytes.extend(self.lifetime.to_be_bytes());
 
         bytes.append(&mut self.host_rect.serialize());
 
@@ -942,8 +950,8 @@ impl ParticleSystem {
 
         bytes.append(&mut self.color.serialize());
 
-        bytes.extend(self.opacity.to_be_bytes().into_iter());
-        bytes.extend(self.vel_multiplier.to_be_bytes().into_iter());
+        bytes.extend(self.opacity.to_be_bytes());
+        bytes.extend(self.vel_multiplier.to_be_bytes());
 
         bytes
     }
@@ -969,6 +977,7 @@ impl Default for RotatingParticleSystem {
 }
 
 impl RotatingParticleSystem {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         spawn_time: f32,
         lifetime: f32,
@@ -1110,9 +1119,9 @@ impl RotatingParticleSystem {
 
         bytes.append(&mut self.particle_system.serialize());
 
-        bytes.extend(self.r.to_be_bytes().into_iter());
-        bytes.extend(self.velr.to_be_bytes().into_iter());
-        bytes.extend(self.offset.to_be_bytes().into_iter());
+        bytes.extend(self.r.to_be_bytes());
+        bytes.extend(self.velr.to_be_bytes());
+        bytes.extend(self.offset.to_be_bytes());
 
         bytes
     }
@@ -1147,7 +1156,7 @@ impl ExplConvParticleSystem {
 
     fn activate(&mut self, count: usize, offset: f32) {
         self.life_timer = 0.0;
-        for i in 0..count {
+        for _ in 0..count {
             self.particles.push(ExplConvCircleParticle {
                 circle: self.host_circle,
                 offset,
@@ -1211,23 +1220,12 @@ impl ExplConvParticleSystem {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 struct Planet {
     circle: Circle,
     color: Color,
     particle_system: ParticleSystem,
     moons: Vec<RotatingParticleSystem>,
-}
-
-impl Default for Planet {
-    fn default() -> Self {
-        Self {
-            circle: Circle::default(),
-            color: Color::default(),
-            particle_system: ParticleSystem::default(),
-            moons: Vec::new(),
-        }
-    }
 }
 
 impl Planet {
@@ -1253,7 +1251,7 @@ impl Planet {
 
         let r: f32 = rand::thread_rng().gen_range(0.0..360.0);
         let clockwise = rand::thread_rng().gen_bool(0.5);
-        for i in 0..rand::thread_rng().gen_range(0..MAX_MOONS) {
+        for _ in 0..rand::thread_rng().gen_range(0..MAX_MOONS) {
             planet.moons.push(RotatingParticleSystem::new(
                 rand::thread_rng().gen_range(1.0..2.6),
                 0.6,
@@ -1349,7 +1347,7 @@ impl Planet {
         bytes.append(&mut self.particle_system.serialize());
 
         let moons_size = self.moons.len();
-        bytes.extend(moons_size.to_be_bytes().into_iter());
+        bytes.extend(moons_size.to_be_bytes());
         for i in 0..moons_size {
             bytes.append(&mut self.moons[i].serialize());
         }
@@ -1477,8 +1475,8 @@ impl Star {
         bytes.append(&mut self.color.serialize());
         bytes.append(&mut self.particle_system.serialize());
 
-        bytes.extend(self.velr.to_be_bytes().into_iter());
-        bytes.extend(self.r.to_be_bytes().into_iter());
+        bytes.extend(self.velr.to_be_bytes());
+        bytes.extend(self.r.to_be_bytes());
 
         bytes
     }
@@ -1721,12 +1719,12 @@ impl Fish {
 
         bytes.append(&mut self.pos.serialize());
 
-        bytes.extend(self.r.to_be_bytes().into_iter());
-        bytes.extend(self.swim_time.to_be_bytes().into_iter());
-        bytes.extend(self.swim_timer.to_be_bytes().into_iter());
-        bytes.extend(self.swim_v.to_be_bytes().into_iter());
-        bytes.extend(self.anim_timer.to_be_bytes().into_iter());
-        bytes.extend(self.anim_time.to_be_bytes().into_iter());
+        bytes.extend(self.r.to_be_bytes());
+        bytes.extend(self.swim_time.to_be_bytes());
+        bytes.extend(self.swim_timer.to_be_bytes());
+        bytes.extend(self.swim_v.to_be_bytes());
+        bytes.extend(self.anim_timer.to_be_bytes());
+        bytes.extend(self.anim_time.to_be_bytes());
 
         bytes.append(&mut self.color.serialize());
         bytes.append(&mut self.body_rect.serialize());
@@ -1736,7 +1734,7 @@ impl Fish {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 struct SaveData {
     planets: Vec<Planet>,
     stars: Vec<Star>,
@@ -1746,18 +1744,6 @@ struct SaveData {
 }
 
 const SAVE_DATA_IDENTIFIER: [u8; 4] = [0x53, 0x41, 0x56, 0x45];
-
-impl Default for SaveData {
-    fn default() -> Self {
-        Self {
-            planets: Vec::new(),
-            stars: Vec::new(),
-            fishes: Vec::new(),
-            player: Rectangle::default(),
-            joining_particles: RotatingParticleSystem::default(),
-        }
-    }
-}
 
 impl SaveData {
     pub fn deserialize(data: &[u8]) -> Result<(SaveData, usize), ()> {
@@ -1838,17 +1824,17 @@ impl SaveData {
 
         bytes.extend(SAVE_DATA_IDENTIFIER.iter());
 
-        bytes.extend(self.planets.len().to_be_bytes().into_iter());
+        bytes.extend(self.planets.len().to_be_bytes());
         for planet in &self.planets {
             bytes.append(&mut planet.serialize());
         }
 
-        bytes.extend(self.stars.len().to_be_bytes().into_iter());
+        bytes.extend(self.stars.len().to_be_bytes());
         for star in &self.stars {
             bytes.append(&mut star.serialize());
         }
 
-        bytes.extend(self.fishes.len().to_be_bytes().into_iter());
+        bytes.extend(self.fishes.len().to_be_bytes());
         for fish in &self.fishes {
             bytes.append(&mut fish.serialize());
         }
@@ -1866,6 +1852,7 @@ enum SaveLoadNotification {
     Load { text: Option<String>, timer: f32 },
 }
 
+#[allow(dead_code)]
 pub struct GameState {
     s_boom: String,
     s_get: String,
@@ -2127,7 +2114,7 @@ impl GameState {
                                 ));
                             } else {
                                 // spawn fish
-                                for i in 0..rng.gen_range(1..4) {
+                                for _ in 0..rng.gen_range(1..4) {
                                     self.fishes.push(Fish::new(
                                         click_pos,
                                         rng.gen_range(0.0..360.0),
@@ -2190,7 +2177,7 @@ impl GameState {
                 } else {
                     match self.state {
                         0 | 1 => self.state += 1,
-                        3 | 4 | 5 | 6 => self.state = 7,
+                        3..=6 => self.state = 7,
                         7 => self.state = 8,
                         9 => self.state = 10,
                         _ => self.state = 0,
@@ -2203,25 +2190,28 @@ impl GameState {
                         MenuItemType::AppearingText {
                             text,
                             text_idx,
-                            text_size,
-                            text_c,
-                            timer,
+                            text_size: _,
+                            text_c: _,
+                            timer: _,
                         } => {
                             *text_idx = text.len();
                         }
                         MenuItemType::Button {
-                            text,
-                            text_c,
-                            h_c,
-                            c,
+                            text: _,
+                            text_c: _,
+                            h_c: _,
+                            c: _,
                         } => {
                             //let style = FontStyle::new(42.0, *text_c);
                         }
-                        MenuItemType::Pause { timer, length } => (),
+                        MenuItemType::Pause {
+                            timer: _,
+                            length: _,
+                        } => (),
                         MenuItemType::InstantText {
-                            text,
-                            text_size,
-                            text_color,
+                            text: _,
+                            text_size: _,
+                            text_color: _,
                         } => {}
                     }
                     mi.is_loaded = true;
@@ -2401,10 +2391,10 @@ impl GameState {
             if !mi.is_loaded {
                 match &mut mi.item_type {
                     MenuItemType::Button {
-                        text,
-                        text_c,
-                        h_c,
-                        c,
+                        text: _,
+                        text_c: _,
+                        h_c: _,
+                        c: _,
                     } => {
                         //self.font.execute(|font| {
                         //    let style = FontStyle::new(42.0, *text_c);
@@ -2423,8 +2413,8 @@ impl GameState {
                     MenuItemType::AppearingText {
                         text,
                         text_idx,
-                        text_size,
-                        text_c,
+                        text_size: _,
+                        text_c: _,
                         timer,
                     } => {
                         *timer += dt;
@@ -2460,9 +2450,9 @@ impl GameState {
                         }
                     }
                     MenuItemType::InstantText {
-                        text,
-                        text_size,
-                        text_color,
+                        text: _,
+                        text_size: _,
+                        text_color: _,
                     } => {
                         //if text_image.is_none() {
                         //    self.font.execute(|f| {
@@ -2607,9 +2597,9 @@ impl GameState {
                 MenuItemType::AppearingText {
                     text,
                     text_idx,
-                    text_size,
+                    text_size: _,
                     text_c,
-                    timer,
+                    timer: _,
                 } => {
                     window.get_font_mut(&self.font)?.draw(
                         if *text_idx < text.len() {
@@ -2636,7 +2626,10 @@ impl GameState {
                         *text_color,
                     )?;
                 }
-                MenuItemType::Pause { timer, length } => (),
+                MenuItemType::Pause {
+                    timer: _,
+                    length: _,
+                } => (),
             }
         }
         self.player_particles.draw(window, Transform::IDENTITY);
@@ -2680,7 +2673,7 @@ impl GameState {
                                 255,
                                 255,
                                 255,
-                                ((*timer / SL_NOTIF_TIME) as f32 * 255.0) as u8,
+                                ((*timer / SL_NOTIF_TIME) * 255.0) as u8,
                             ),
                         )?;
                     }

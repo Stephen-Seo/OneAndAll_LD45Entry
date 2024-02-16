@@ -10,6 +10,7 @@ extern "C" {
 extern "C" {
     pub fn glVertexAttrib3f(index: ::std::os::raw::c_uint, x: f32, y: f32, z: f32);
 }
+#[allow(dead_code)]
 extern "C" {
     pub fn glVertexAttrib4f(index: ::std::os::raw::c_uint, x: f32, y: f32, z: f32, w: f32);
 }
