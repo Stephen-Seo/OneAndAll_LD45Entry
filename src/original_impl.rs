@@ -1317,9 +1317,10 @@ impl Planet {
         planet.color = color;
         idx += color_size;
 
-        let (psystem, psystem_size) = ParticleSystem::deserialize(data, offset + idx)?;
-        planet.particle_system = psystem;
-        idx += psystem_size;
+        // No need to deserialize ParticleSystem
+        //let (psystem, psystem_size) = ParticleSystem::deserialize(data, offset + idx)?;
+        //planet.particle_system = psystem;
+        //idx += psystem_size;
 
         if data.len() < offset + idx + std::mem::size_of::<usize>() {
             return Err(());
@@ -1344,7 +1345,9 @@ impl Planet {
 
         bytes.append(&mut self.circle.serialize());
         bytes.append(&mut self.color.serialize());
-        bytes.append(&mut self.particle_system.serialize());
+
+        // No need to serialize ParticleSystem.
+        //bytes.append(&mut self.particle_system.serialize());
 
         let moons_size = self.moons.len();
         bytes.extend(moons_size.to_be_bytes());
@@ -1442,9 +1445,10 @@ impl Star {
         star.color = color;
         idx += color_size;
 
-        let (psystem, psystem_size) = ParticleSystem::deserialize(data, offset + idx)?;
-        star.particle_system = psystem;
-        idx += psystem_size;
+        // No need to deserialize ParticleSystem.
+        //let (psystem, psystem_size) = ParticleSystem::deserialize(data, offset + idx)?;
+        //star.particle_system = psystem;
+        //idx += psystem_size;
 
         if data.len() < offset + idx + std::mem::size_of::<f32>() {
             return Err(());
@@ -1473,7 +1477,9 @@ impl Star {
         let mut bytes = Vec::new();
 
         bytes.append(&mut self.color.serialize());
-        bytes.append(&mut self.particle_system.serialize());
+
+        // No need to serialize ParticleSystem.
+        //bytes.append(&mut self.particle_system.serialize());
 
         bytes.extend(self.velr.to_be_bytes());
         bytes.extend(self.r.to_be_bytes());
