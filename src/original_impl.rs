@@ -1749,7 +1749,7 @@ struct SaveData {
     joining_particles: RotatingParticleSystem,
 }
 
-const SAVE_DATA_IDENTIFIER: [u8; 4] = [0x53, 0x41, 0x56, 0x45];
+const SAVE_DATA_IDENTIFIER: [u8; 8] = [0x53, 0x41, 0x56, 0x45, 'V' as u8, 'e' as u8, 'r' as u8, 1];
 
 impl SaveData {
     pub fn deserialize(data: &[u8]) -> Result<(SaveData, usize), ()> {
