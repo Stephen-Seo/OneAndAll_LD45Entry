@@ -10,6 +10,8 @@ framework. It now uses Raylib.
 
 It can be run locally by invoking `cargo run` in the project directory.
 
+**Non-WASM builds are broken: The camera doesn't work properly.**
+
 Resources are located in the `static/` folder.
 
 Note the code is very messy due to the make-game-in-two-days constraint.
