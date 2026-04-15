@@ -19,10 +19,10 @@ ld45.html: src/main.c ../target/wasm32-unknown-emscripten/release/libld45_lib.a
 		-L../target/wasm32-unknown-emscripten/release -lld45_lib \
 		-sALLOW_MEMORY_GROWTH \
 		-s INITIAL_MEMORY=64MB \
-		-s TOTAL_STACK=32MB \
-		-O2 \
+		-s STACK_SIZE=32MB \
 		-sEXPORTED_FUNCTIONS="['_malloc', '_main']" \
-		-sEXPORTED_RUNTIME_METHODS=ccall,cwrap \
+		-O2 \
+		-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,HEAPF32 \
 		--preload-file ../static src/main.c
 	ln -sf ld45.html index.html
 

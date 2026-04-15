@@ -15,14 +15,14 @@ varying vec4 fragColor;
 uniform mat4 mvp;
 
 // custom
-attribute vec2 camera;
-attribute vec2 origin;
-attribute mat3 transform;
+uniform vec2 camera;
+uniform vec2 origin;
+uniform mat4 transform;
 
 void main() {
   fragTexCoord = vertexTexCoord;
   fragColor = vertexColor;
 
-  vec3 pos = transform * (vertexPosition - vec3(origin, 0.0)) + vec3(origin, 0.0);
-  gl_Position = mvp * vec4(pos - vec3(camera, 0.0), 1.0);
+  vec4 pos = transform * vec4((vertexPosition - vec3(origin, 0.0)), 0.0) + vec4(origin, 0.0, 0.0);
+  gl_Position = mvp * vec4(vec2(pos) - camera, 0.0, 1.0);
 }

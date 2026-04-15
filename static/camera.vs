@@ -15,7 +15,7 @@ varying vec4 fragColor;
 uniform mat4 mvp;
 
 // custom
-attribute vec2 camera;
+uniform vec2 camera;
 
 void main() {
   fragTexCoord = vertexTexCoord;

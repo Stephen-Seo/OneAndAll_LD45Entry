@@ -5,6 +5,10 @@
 
 #include <stdio.h>
 
+#include <raylib.h>
+
+static int audio_loaded_check = 1;
+
 void ld45_saved_result_ok(void *usr) {
     puts("Save OK");
 }
@@ -40,6 +44,16 @@ void ld45_load_async(void *usr) {
 }
 
 void main_loop(void *ud) {
+    if (audio_loaded_check) {
+        if (IsMouseButtonPressed(0) || IsMouseButtonPressed(1)) {
+            InitAudioDevice();
+            if (IsAudioDeviceReady()) {
+                audio_loaded_check = 0;
+                puts("Loaded audio.");
+            }
+        }
+    }
+
     ld45_iterate(ud);
 }
 

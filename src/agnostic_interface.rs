@@ -50,9 +50,9 @@ pub trait MusicInterface {
 }
 
 pub trait ShaderInterface {
-    fn set_transform_attrib(&mut self, transform: Transform) -> Result<(), String>;
-    fn set_origin_attrib(&mut self, origin: Vector) -> Result<(), String>;
-    fn set_camera_attrib(&mut self, camera: Vector) -> Result<(), String>;
+    fn set_transform_uniform(&mut self, transform: Transform) -> Result<(), String>;
+    fn set_origin_uniform(&mut self, origin: Vector) -> Result<(), String>;
+    fn set_camera_uniform(&mut self, camera: Vector) -> Result<(), String>;
     fn begin_draw_shader(&self) -> Result<(), String>;
     fn end_draw_shader(&self) -> Result<(), String>;
 }

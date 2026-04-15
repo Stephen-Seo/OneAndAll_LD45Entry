@@ -335,6 +335,12 @@ impl From<(f32, f32)> for Vector {
     }
 }
 
+impl From<Vector> for crate::agnostic_interface::raylib_impl::ffi::Vector2 {
+    fn from(value: Vector) -> Self {
+        Self { x: value.x, y: value.y }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Transform {
     pub mat: [f32; 9],
@@ -403,6 +409,29 @@ impl Transform {
     pub fn translate(x: f32, y: f32) -> Self {
         Self {
             mat: [1.0, 0.0, x, 0.0, 1.0, y, 0.0, 0.0, 1.0],
+        }
+    }
+}
+
+impl From<Transform> for crate::agnostic_interface::raylib_impl::ffi::Matrix {
+    fn from(value: Transform) -> Self {
+        Self {
+            m0: value.mat[0],
+            m1: value.mat[3],
+            m2: value.mat[6],
+            m3: 0.0,
+            m4: value.mat[1],
+            m5: value.mat[4],
+            m6: value.mat[7],
+            m7: 0.0,
+            m8: value.mat[2],
+            m9: value.mat[5],
+            m10: value.mat[8],
+            m11: 0.0,
+            m12: 0.0,
+            m13: 0.0,
+            m14: 0.0,
+            m15: 1.0,
         }
     }
 }

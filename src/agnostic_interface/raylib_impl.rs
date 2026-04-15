@@ -18,10 +18,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::{
-    faux_quicksilver::{Transform, Vector},
-    shaders::{get_attrib_location, set_attr_2f, set_transform_3f},
-};
+use crate::faux_quicksilver::{Transform, Vector};
 
 use super::{
     CameraInterface, FontInterface, GameInterface, ImageInterface, MusicInterface, ShaderInterface,
@@ -60,11 +57,13 @@ impl RaylibShader {
         self.shader.id as ::std::os::raw::c_uint
     }
 
-    fn set_transform_attrib(&mut self, transform: Transform) -> Result<(), String> {
+    fn set_transform_uniform(&mut self, transform: Transform) -> Result<(), String> {
         let transform_cstr = CString::new("transform")
             .map_err(|_| String::from("Failed to create \"transform\" CString!"))?;
-        let attr_loc = get_attrib_location(self, &transform_cstr);
-        set_transform_3f(attr_loc, transform);
+        let uniform_location = unsafe {ffi::GetShaderLocation(self.shader, transform_cstr.as_ptr())};
+        unsafe {
+            ffi::SetShaderValueMatrix(self.shader, uniform_location, transform.into());
+        }
         Ok(())
     }
 
@@ -82,19 +81,25 @@ impl RaylibShader {
         Ok(())
     }
 
-    fn set_origin_attrib(&mut self, origin: Vector) -> Result<(), String> {
+    fn set_origin_uniform(&mut self, origin: Vector) -> Result<(), String> {
         let origin_cstr = CString::new("origin")
             .map_err(|_| String::from("Failed to create \"origin\" CString!"))?;
-        let attr_loc = get_attrib_location(self, &origin_cstr);
-        set_attr_2f(attr_loc, origin);
+        let uniform_location = unsafe {ffi::GetShaderLocation(self.shader, origin_cstr.as_ptr())};
+        let vec2: ffi::Vector2 = origin.into();
+        unsafe {
+            ffi::SetShaderValueV(self.shader, uniform_location, &vec2 as *const ffi::Vector2 as *const std::ffi::c_void, 1, 1);
+        }
         Ok(())
     }
 
-    fn set_camera_attrib(&mut self, camera: Vector) -> Result<(), String> {
+    fn set_camera_uniform(&mut self, camera: Vector) -> Result<(), String> {
         let camera_cstr = CString::new("camera")
             .map_err(|_| String::from("Failed to create \"camera\" CString!"))?;
-        let attr_loc = get_attrib_location(self, &camera_cstr);
-        set_attr_2f(attr_loc, camera);
+        let uniform_location = unsafe {ffi::GetShaderLocation(self.shader, camera_cstr.as_ptr())};
+        let vec2: ffi::Vector2 = camera.into();
+        unsafe {
+            ffi::SetShaderValueV(self.shader, uniform_location, &vec2 as *const ffi::Vector2 as *const std::ffi::c_void, 1, 1);
+        }
         Ok(())
     }
 }
@@ -105,8 +110,8 @@ struct RaylibShaderHandler {
 }
 
 impl ShaderInterface for RaylibShaderHandler {
-    fn set_transform_attrib(&mut self, transform: Transform) -> Result<(), String> {
-        self.shader.borrow_mut().set_transform_attrib(transform)
+    fn set_transform_uniform(&mut self, transform: Transform) -> Result<(), String> {
+        self.shader.borrow_mut().set_transform_uniform(transform)
     }
 
     fn begin_draw_shader(&self) -> Result<(), String> {
@@ -117,12 +122,12 @@ impl ShaderInterface for RaylibShaderHandler {
         self.shader.borrow().end_draw_shader()
     }
 
-    fn set_origin_attrib(&mut self, origin: Vector) -> Result<(), String> {
-        self.shader.borrow_mut().set_origin_attrib(origin)
+    fn set_origin_uniform(&mut self, origin: Vector) -> Result<(), String> {
+        self.shader.borrow_mut().set_origin_uniform(origin)
     }
 
-    fn set_camera_attrib(&mut self, camera: Vector) -> Result<(), String> {
-        self.shader.borrow_mut().set_camera_attrib(camera)
+    fn set_camera_uniform(&mut self, camera: Vector) -> Result<(), String> {
+        self.shader.borrow_mut().set_camera_uniform(camera)
     }
 }
 
@@ -185,7 +190,7 @@ impl ImageInterface for RaylibImageHandler {
     ) -> Result<(), String> {
         self.image_to_texture()?;
         if let Some(cam_shader) = self.cam_shader.borrow_mut().as_mut() {
-            cam_shader.set_camera_attrib(self.camera.borrow().pos)?;
+            cam_shader.set_camera_uniform(self.camera.borrow().pos)?;
             cam_shader.begin_draw_shader()?;
             unsafe {
                 ffi::DrawTexture(
@@ -227,7 +232,7 @@ impl ImageInterface for RaylibImageHandler {
     ) -> Result<(), String> {
         self.image_to_texture()?;
         if let Some(cam_shader) = self.cam_shader.borrow_mut().as_mut() {
-            cam_shader.set_camera_attrib(self.camera.borrow().pos)?;
+            cam_shader.set_camera_uniform(self.camera.borrow().pos)?;
             cam_shader.begin_draw_shader()?;
             unsafe {
                 ffi::DrawTexturePro(
@@ -275,9 +280,9 @@ impl ImageInterface for RaylibImageHandler {
     ) -> Result<(), String> {
         self.image_to_texture()?;
         if let Some(shader) = self.tr_or_cam_shader.borrow_mut().as_mut() {
-            shader.set_origin_attrib(origin)?;
-            shader.set_transform_attrib(transform)?;
-            shader.set_camera_attrib(self.camera.borrow().pos)?;
+            shader.set_origin_uniform(origin)?;
+            shader.set_transform_uniform(transform)?;
+            shader.set_camera_uniform(self.camera.borrow().pos)?;
             shader.begin_draw_shader()?;
             unsafe {
                 ffi::DrawTexture(
@@ -294,7 +299,7 @@ impl ImageInterface for RaylibImageHandler {
             }
             shader.end_draw_shader()?;
         } else if let Some(cam_shader) = self.cam_shader.borrow_mut().as_mut() {
-            cam_shader.set_camera_attrib(self.camera.borrow().pos)?;
+            cam_shader.set_camera_uniform(self.camera.borrow().pos)?;
             cam_shader.begin_draw_shader()?;
             unsafe {
                 ffi::DrawTexture(
@@ -338,9 +343,9 @@ impl ImageInterface for RaylibImageHandler {
     ) -> Result<(), String> {
         self.image_to_texture()?;
         if let Some(shader) = self.tr_or_cam_shader.borrow_mut().as_mut() {
-            shader.set_origin_attrib(origin)?;
-            shader.set_transform_attrib(transform)?;
-            shader.set_camera_attrib(self.camera.borrow().pos)?;
+            shader.set_origin_uniform(origin)?;
+            shader.set_transform_uniform(transform)?;
+            shader.set_camera_uniform(self.camera.borrow().pos)?;
             shader.begin_draw_shader()?;
             unsafe {
                 ffi::DrawTexturePro(
@@ -359,7 +364,7 @@ impl ImageInterface for RaylibImageHandler {
             }
             shader.end_draw_shader()?;
         } else if let Some(cam_shader) = self.cam_shader.borrow_mut().as_mut() {
-            cam_shader.set_camera_attrib(self.camera.borrow().pos)?;
+            cam_shader.set_camera_uniform(self.camera.borrow().pos)?;
             cam_shader.begin_draw_shader()?;
             unsafe {
                 ffi::DrawTexturePro(
@@ -462,8 +467,10 @@ struct RaylibSoundHandler {
 impl SoundInterface for RaylibSoundHandler {
     fn play(&mut self, vol: f32) -> Result<(), String> {
         unsafe {
-            ffi::SetSoundVolume(self.sound.sound, vol);
-            ffi::PlaySound(self.sound.sound);
+            if ffi::IsAudioDeviceReady() {
+                ffi::SetSoundVolume(self.sound.sound, vol);
+                ffi::PlaySound(self.sound.sound);
+            }
         }
         Ok(())
     }
@@ -477,7 +484,9 @@ struct RaylibMusic {
 impl RaylibMusic {
     pub fn update(&mut self) {
         unsafe {
-            ffi::UpdateMusicStream(self.music);
+            if ffi::IsAudioDeviceReady() {
+                ffi::UpdateMusicStream(self.music);
+            }
         }
     }
 }
@@ -490,22 +499,28 @@ struct RaylibMusicHandler {
 impl MusicInterface for RaylibMusicHandler {
     fn play(&mut self, vol: f32) -> Result<(), String> {
         unsafe {
-            ffi::SetMusicVolume(self.music.borrow().music, vol);
-            ffi::PlayMusicStream(self.music.borrow().music);
+            if ffi::IsAudioDeviceReady() {
+                ffi::SetMusicVolume(self.music.borrow().music, vol);
+                ffi::PlayMusicStream(self.music.borrow().music);
+            }
         }
         Ok(())
     }
 
     fn pause(&mut self) -> Result<(), String> {
         unsafe {
-            ffi::PauseMusicStream(self.music.borrow().music);
+            if ffi::IsAudioDeviceReady() {
+                ffi::PauseMusicStream(self.music.borrow().music);
+            }
         }
         Ok(())
     }
 
     fn stop(&mut self) -> Result<(), String> {
         unsafe {
-            ffi::StopMusicStream(self.music.borrow().music);
+            if ffi::IsAudioDeviceReady() {
+                ffi::StopMusicStream(self.music.borrow().music);
+            }
         }
         Ok(())
     }
@@ -566,6 +581,18 @@ impl RaylibGame {
     #[cfg(target_arch = "wasm32")]
     fn native_setup() {}
 
+    #[cfg(not(target_arch = "wasm32"))]
+    fn audio_setup() {
+        unsafe {
+            while !ffi::IsAudioDeviceReady() {
+                ffi::InitAudioDevice();
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn audio_setup() {}
+
     pub fn new_boxed(width: u32, height: u32) -> Box<dyn GameInterface> {
         unsafe {
             let string = "One and All LD45\0";
@@ -577,11 +604,7 @@ impl RaylibGame {
         }
 
         Self::native_setup();
-        unsafe {
-            while !ffi::IsAudioDeviceReady() {
-                ffi::InitAudioDevice();
-            }
-        }
+        Self::audio_setup();
 
         let mut self_unboxed = Self {
             images: HashMap::new(),
@@ -712,7 +735,7 @@ impl GameInterface for RaylibGame {
         if let Some(cam_shader) = self.shaders.get_mut("camera") {
             cam_shader
                 .borrow_mut()
-                .set_camera_attrib(self.camera.borrow().pos)?;
+                .set_camera_uniform(self.camera.borrow().pos)?;
             cam_shader.borrow().begin_draw_shader()?;
             unsafe {
                 ffi::DrawCircle(
@@ -744,11 +767,11 @@ impl GameInterface for RaylibGame {
         origin: Vector,
     ) -> Result<(), String> {
         if let Some(shader) = self.shaders.get_mut("transform_origin") {
-            shader.borrow_mut().set_origin_attrib(origin)?;
-            shader.borrow_mut().set_transform_attrib(transform)?;
+            shader.borrow_mut().set_origin_uniform(origin)?;
+            shader.borrow_mut().set_transform_uniform(transform)?;
             shader
                 .borrow_mut()
-                .set_camera_attrib(self.camera.borrow().pos)?;
+                .set_camera_uniform(self.camera.borrow().pos)?;
             shader.borrow().begin_draw_shader()?;
             unsafe {
                 ffi::DrawCircle(
@@ -762,7 +785,7 @@ impl GameInterface for RaylibGame {
         } else if let Some(cam_shader) = self.shaders.get_mut("camera") {
             cam_shader
                 .borrow_mut()
-                .set_camera_attrib(self.camera.borrow().pos)?;
+                .set_camera_uniform(self.camera.borrow().pos)?;
             cam_shader.borrow().begin_draw_shader()?;
             unsafe {
                 ffi::DrawCircle(
@@ -794,7 +817,7 @@ impl GameInterface for RaylibGame {
         if let Some(cam_shader) = self.shaders.get_mut("camera") {
             cam_shader
                 .borrow_mut()
-                .set_camera_attrib(self.camera.borrow().pos)?;
+                .set_camera_uniform(self.camera.borrow().pos)?;
             cam_shader.borrow().begin_draw_shader()?;
             unsafe {
                 ffi::DrawRectangle(
@@ -830,7 +853,7 @@ impl GameInterface for RaylibGame {
         if let Some(cam_shader) = self.shaders.get_mut("camera") {
             cam_shader
                 .borrow_mut()
-                .set_camera_attrib(self.camera.borrow().pos)?;
+                .set_camera_uniform(self.camera.borrow().pos)?;
             cam_shader.borrow().begin_draw_shader()?;
             unsafe {
                 ffi::DrawRectanglePro(
@@ -862,11 +885,11 @@ impl GameInterface for RaylibGame {
         origin: Vector,
     ) -> Result<(), String> {
         if let Some(shader) = self.shaders.get_mut("transform_origin") {
-            shader.borrow_mut().set_origin_attrib(origin)?;
-            shader.borrow_mut().set_transform_attrib(transform)?;
+            shader.borrow_mut().set_origin_uniform(origin)?;
+            shader.borrow_mut().set_transform_uniform(transform)?;
             shader
                 .borrow_mut()
-                .set_camera_attrib(self.camera.borrow().pos)?;
+                .set_camera_uniform(self.camera.borrow().pos)?;
             shader.borrow().begin_draw_shader()?;
             unsafe {
                 ffi::DrawRectangle(
@@ -881,7 +904,7 @@ impl GameInterface for RaylibGame {
         } else if let Some(cam_shader) = self.shaders.get_mut("camera") {
             cam_shader
                 .borrow_mut()
-                .set_camera_attrib(self.camera.borrow().pos)?;
+                .set_camera_uniform(self.camera.borrow().pos)?;
             cam_shader.borrow().begin_draw_shader()?;
             unsafe {
                 ffi::DrawRectangle(

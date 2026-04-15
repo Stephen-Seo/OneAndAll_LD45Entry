@@ -1896,22 +1896,23 @@ pub struct GameState {
     save_load_notification: Option<SaveLoadNotification>,
     #[cfg(target_family = "wasm")]
     load_recv: Option<Receiver<Vec<u8>>>,
+    loaded_sounds_music: bool
 }
 
 impl GameState {
     pub fn new(window: &mut Window) -> Result<Self, String> {
         let s_boom = String::from("boom.mp3");
-        window.load_sound(
-            &PathBuf::from_str("static/boom.mp3")
-                .map_err(|_| String::from("Failed to load \"static/boom.mp3\""))?,
-            s_boom.clone(),
-        )?;
+        //window.load_sound(
+        //    &PathBuf::from_str("static/boom.mp3")
+        //        .map_err(|_| String::from("Failed to load \"static/boom.mp3\""))?,
+        //    s_boom.clone(),
+        //)?;
         let s_get = String::from("get.mp3");
-        window.load_sound(
-            &PathBuf::from_str("static/get.mp3")
-                .map_err(|_| String::from("Failed to load \"static/get.mp3\""))?,
-            s_get.clone(),
-        )?;
+        //window.load_sound(
+        //    &PathBuf::from_str("static/get.mp3")
+        //        .map_err(|_| String::from("Failed to load \"static/get.mp3\""))?,
+        //    s_get.clone(),
+        //)?;
         let s_power_up = String::from("power_up.mp3");
         //window.load_sound(
         //    &PathBuf::from_str("static/power_up.mp3")
@@ -1919,11 +1920,11 @@ impl GameState {
         //    s_power_up.clone(),
         //)?;
         let s_tap = String::from("tap.mp3");
-        window.load_sound(
-            &PathBuf::from_str("static/tap.mp3")
-                .map_err(|_| String::from("Failed to load \"static/tap.mp3\""))?,
-            s_tap.clone(),
-        )?;
+        //window.load_sound(
+        //    &PathBuf::from_str("static/tap.mp3")
+        //        .map_err(|_| String::from("Failed to load \"static/tap.mp3\""))?,
+        //    s_tap.clone(),
+        //)?;
         let s_speak_m = String::from("speak_m.mp3");
         //window.load_sound(
         //    &PathBuf::from_str("static/speak_m.mp3")
@@ -1945,11 +1946,11 @@ impl GameState {
         )?;
 
         let music2 = String::from("music2.mp3");
-        window.load_music(
-            &PathBuf::from_str("static/music2.mp3")
-                .map_err(|_| String::from("Failed to load \"static/music2.mp3\""))?,
-            music2.clone(),
-        )?;
+        //window.load_music(
+        //    &PathBuf::from_str("static/music2.mp3")
+        //        .map_err(|_| String::from("Failed to load \"static/music2.mp3\""))?,
+        //    music2.clone(),
+        //)?;
 
         let i_star = String::from("star.png");
         window.load_image(
@@ -2027,11 +2028,41 @@ impl GameState {
             save_load_notification: None,
             #[cfg(target_family = "wasm")]
             load_recv: None,
+            loaded_sounds_music: false,
         })
     }
 
     pub fn update(&mut self, window: &mut Window) -> Result<(), String> {
         let dt = window.get_gi().get_delta_time();
+
+        // check music/sounds loaded
+        if !self.loaded_sounds_music {
+            let bool_ret = unsafe{ crate::agnostic_interface::raylib_impl::ffi::IsAudioDeviceReady() };
+            if bool_ret {
+                window.load_sound(
+                    &PathBuf::from_str("static/boom.mp3")
+                        .map_err(|_| String::from("Failed to load \"static/boom.mp3\""))?,
+                    self.s_boom.clone(),
+                )?;
+                window.load_sound(
+                    &PathBuf::from_str("static/get.mp3")
+                        .map_err(|_| String::from("Failed to load \"static/get.mp3\""))?,
+                    self.s_get.clone(),
+                )?;
+                window.load_sound(
+                    &PathBuf::from_str("static/tap.mp3")
+                        .map_err(|_| String::from("Failed to load \"static/tap.mp3\""))?,
+                    self.s_tap.clone(),
+                )?;
+                window.load_music(
+                    &PathBuf::from_str("static/music2.mp3")
+                        .map_err(|_| String::from("Failed to load \"static/music2.mp3\""))?,
+                    self.music2.clone(),
+                )?;
+
+                self.loaded_sounds_music = true;
+            }
+        }
 
         // check mouse pos
         {
