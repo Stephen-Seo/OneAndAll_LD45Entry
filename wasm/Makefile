@@ -5,7 +5,6 @@ RUST_SOURCES = \
 	../src/agnostic_interface/raylib_impl.rs \
 	../src/bin.rs \
 	../src/agnostic_interface.rs \
-	../src/shaders.rs \
 	../src/faux_quicksilver.rs \
 	../src/lib.rs \
 	../src/original_impl.rs \
@@ -30,7 +29,7 @@ ld45.html: src/main.c ../target/wasm32-unknown-emscripten/release/libld45_lib.a
 #-sWARN_UNALIGNED=1 \
 
 ../target/wasm32-unknown-emscripten/release/libld45_lib.a: ${RUST_SOURCES}
-	cd .. && source ${EM_ENV} && cargo build --lib --release --target wasm32-unknown-emscripten
+	cd .. && source ${EM_ENV} && env CARGO_TARGET_DIR=target cargo build --lib --release --target wasm32-unknown-emscripten
 #	cd .. && source ${EM_ENV} && cargo rustc --lib --release --target wasm32-unknown-emscripten -- -C link-args=-Wl,-zstack-size=8388608
 
 .PHONY: clean
@@ -41,4 +40,4 @@ clean:
 	rm -f ld45.wasm
 	rm -f ld45.data
 	rm -f index.html
-	cd ..; cargo clean
+	cd ..; env CARGO_TARGET_DIR=target cargo clean

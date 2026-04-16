@@ -60,7 +60,8 @@ impl RaylibShader {
     fn set_transform_uniform(&mut self, transform: Transform) -> Result<(), String> {
         let transform_cstr = CString::new("transform")
             .map_err(|_| String::from("Failed to create \"transform\" CString!"))?;
-        let uniform_location = unsafe {ffi::GetShaderLocation(self.shader, transform_cstr.as_ptr())};
+        let uniform_location =
+            unsafe { ffi::GetShaderLocation(self.shader, transform_cstr.as_ptr()) };
         unsafe {
             ffi::SetShaderValueMatrix(self.shader, uniform_location, transform.into());
         }
@@ -84,10 +85,16 @@ impl RaylibShader {
     fn set_origin_uniform(&mut self, origin: Vector) -> Result<(), String> {
         let origin_cstr = CString::new("origin")
             .map_err(|_| String::from("Failed to create \"origin\" CString!"))?;
-        let uniform_location = unsafe {ffi::GetShaderLocation(self.shader, origin_cstr.as_ptr())};
+        let uniform_location = unsafe { ffi::GetShaderLocation(self.shader, origin_cstr.as_ptr()) };
         let vec2: ffi::Vector2 = origin.into();
         unsafe {
-            ffi::SetShaderValueV(self.shader, uniform_location, &vec2 as *const ffi::Vector2 as *const std::ffi::c_void, 1, 1);
+            ffi::SetShaderValueV(
+                self.shader,
+                uniform_location,
+                &vec2 as *const ffi::Vector2 as *const std::ffi::c_void,
+                1,
+                1,
+            );
         }
         Ok(())
     }
@@ -95,10 +102,16 @@ impl RaylibShader {
     fn set_camera_uniform(&mut self, camera: Vector) -> Result<(), String> {
         let camera_cstr = CString::new("camera")
             .map_err(|_| String::from("Failed to create \"camera\" CString!"))?;
-        let uniform_location = unsafe {ffi::GetShaderLocation(self.shader, camera_cstr.as_ptr())};
+        let uniform_location = unsafe { ffi::GetShaderLocation(self.shader, camera_cstr.as_ptr()) };
         let vec2: ffi::Vector2 = camera.into();
         unsafe {
-            ffi::SetShaderValueV(self.shader, uniform_location, &vec2 as *const ffi::Vector2 as *const std::ffi::c_void, 1, 1);
+            ffi::SetShaderValueV(
+                self.shader,
+                uniform_location,
+                &vec2 as *const ffi::Vector2 as *const std::ffi::c_void,
+                1,
+                1,
+            );
         }
         Ok(())
     }

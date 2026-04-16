@@ -337,7 +337,10 @@ impl From<(f32, f32)> for Vector {
 
 impl From<Vector> for crate::agnostic_interface::raylib_impl::ffi::Vector2 {
     fn from(value: Vector) -> Self {
-        Self { x: value.x, y: value.y }
+        Self {
+            x: value.x,
+            y: value.y,
+        }
     }
 }
 
