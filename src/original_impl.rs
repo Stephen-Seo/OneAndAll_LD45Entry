@@ -2270,12 +2270,14 @@ impl GameState {
                 }
             }
         } else if window.get_gi_mut().get_key_pressed('l')? {
-            let load_result = self.load().map_err(|e| e.to_string());
-            if let Err(s) = load_result {
-                self.save_load_notification = Some(SaveLoadNotification::Load {
-                    text: Some(format!("Failed to load! {}", s)),
-                    timer: SL_NOTIF_TIME,
-                });
+            if self.state > 0 {
+                let load_result = self.load().map_err(|e| e.to_string());
+                if let Err(s) = load_result {
+                    self.save_load_notification = Some(SaveLoadNotification::Load {
+                        text: Some(format!("Failed to load! {}", s)),
+                        timer: SL_NOTIF_TIME,
+                    });
+                }
             }
         } else if window.get_gi_mut().get_key_pressed('r')? && self.state == 10 {
             self.state = 0;
@@ -2318,7 +2320,7 @@ impl GameState {
 
         if self.state_dirty {
             self.state_dirty = false;
-            if self.state > 1 && !self.music_on {
+            if self.state > 1 && !self.music_on && self.loaded_sounds_music {
                 let music = window.get_music_mut(&self.music2)?;
                 music.set_loop(true)?;
                 music.play(0.5)?;
@@ -2329,6 +2331,10 @@ impl GameState {
                     self.menu = Menu::s_01();
                     self.current_finished = false;
                     self.selection_mode = false;
+                    self.save_load_notification = Some(SaveLoadNotification::Load {
+                        text: Some("You can load with \"L\" from here on.".into()),
+                        timer: SL_NOTIF_TIME,
+                    });
                 }
                 2 => {
                     self.menu = Menu::s_02();
