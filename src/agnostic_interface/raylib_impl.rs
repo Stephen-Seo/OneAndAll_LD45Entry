@@ -92,7 +92,7 @@ impl RaylibShader {
                 self.shader,
                 uniform_location,
                 &vec2 as *const ffi::Vector2 as *const std::ffi::c_void,
-                1,
+                ffi::rlShaderUniformDataType_RL_SHADER_UNIFORM_VEC2 as std::ffi::c_int,
                 1,
             );
         }
@@ -109,7 +109,7 @@ impl RaylibShader {
                 self.shader,
                 uniform_location,
                 &vec2 as *const ffi::Vector2 as *const std::ffi::c_void,
-                1,
+                ffi::rlShaderUniformDataType_RL_SHADER_UNIFORM_VEC2 as std::ffi::c_int,
                 1,
             );
         }
